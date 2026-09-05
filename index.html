@@ -1,0 +1,40 @@
+async function startReceiptAnalysis() {
+      const img = document.getElementById('uploadedReceiptImg');
+      if (!img || img.classList.contains('hidden') || !activeReceiptBase64) {
+        alert('영수증 사진을 먼저 첨부해 주세요.');
+        return;
+      }
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      if(analyzeBtn) analyzeBtn.disabled = true;
+      
+      const scannerLine = document.getElementById('scannerLine');
+      if(scannerLine) scannerLine.classList.remove('hidden');
+      
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: activeReceiptBase64 })
+        });
+
+        const textResult = await response.text();
+        let result;
+        try {
+          result = JSON.parse(textResult);
+        } catch (err) {
+          throw new Error('서버로부터 올바른 응답을 받지 못했습니다. (Unexpected End of Input)');
+        }
+
+        if (!response.ok) {
+          throw new Error(result.error || '서버 통신 중 오류가 발생했습니다.');
+        }
+
+        if(scannerLine) scannerLine.classList.add('hidden');
+        renderAnalysisUI(result);
+      } catch (e) {
+        if(scannerLine) scannerLine.classList.add('hidden');
+        alert(e.message || '영수증 판독 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      } finally {
+        if(analyzeBtn) analyzeBtn.disabled = false;
+      }
+    }
