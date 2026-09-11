@@ -18,7 +18,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // gemini-3.6-flash 엔드포인트 적용
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
@@ -104,7 +105,7 @@ ETC: 포인트 사용 | -500`;
       return val || fallback;
     };
 
-    // 세금, 단순합계, 결제수단 강제 차단 정규식 (공백 무시)
+    // 부가세, 단순합계, 결제수단 강제 차단 정규식 (과세 합계, 판매 합계, 부가세 등 원천 제외)
     const blockedTermsRegex = /(과세|면세|부가세|세액|vat|판매\s*합계|합계|총액|받은\s*금액|거스름\s*돈|결제|카드)/i;
 
     const lines = rawText.split('\n');
@@ -141,7 +142,7 @@ ETC: 포인트 사용 | -500`;
         const parts = trimmed.substring(4).split('|').map(cleanStr);
         const name = parts[0] || '';
         
-        // 서버단 2차 강제 필터링: 세금 및 합계류 일체 차단
+        // 부가세 및 단순 합계 항목 제외
         if (name && !blockedTermsRegex.test(name)) {
           resultData.overallElements.push({
             name: name,
