@@ -20,19 +20,13 @@ export default async function handler(req, res) {
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
-    const systemPrompt = `전문 영수증 판독 AI. 
-[핵심 데이터 가공 및 정제 규칙]
-1. productOcr: 영수증에 인쇄된 원본 텍스트를 줄바꿈 없이 한 줄로 평탄화하여 그대로 발췌할 것.
-2. productAi (필수 준수): 
-   - 상세 물리적 치수(cm 등)와 불필요한 기호(*, 괄호 등)는 과감히 제거할 것.
-   - 반드시 "유통사명 + 핵심 품목명 + 대괄호를 뺀 순수 품번" 형태로 조합하여 작성할 것. (예: "다이소 타포린백 1039523")
-   - 원본 텍스트를 단순히 그대로 복사하지 말고 위 가공 규칙을 철저히 적용할 것.
-3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\\n)를 절대 넣지 말고 한 줄로 이어 출력할 것.
-4. 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements에서 제외하고 전체 일괄 할인은 '총액 차감 (할인명)' 형태로 기재할 것.`;
+    const systemPrompt = `전문 영수증 판독 AI. 지정된 JSON Schema 형식에 맞춰 데이터를 정확히 추출할 것.
+[데이터 정제 및 조합 원칙]
+1. productOcr: 영수증 원본 텍스트를 줄바꿈 없이 한 줄로 평탄화하여 그대로 발췌할 것.
+2. productAi: 외부 지식 배제, 오직 영수증 판독 정보만 활용. 상세 치수(cm 등)와 기호 제거 후 "유통사명 + 핵심 품목명 + 대괄호 없는 순수 품번" 조합으로 작성 (예: "다이소 타포린백 1039523"). 정보 부족 시 원본 반영.
+3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\\n) 금지, 한 줄로 출력할 것.
+4. 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements 제외. 일괄 할인은 '총액 차감 (할인명)' 기재.`;
 
-    const promptText = `영수증을 분석하여 지정된 JSON Schema 형식에 맞춰 데이터를 추출하시오.`;
-
-    // API 구조 및 타입 강제 스키마
     const responseSchema = {
       type: "OBJECT",
       properties: {
@@ -82,12 +76,12 @@ export default async function handler(req, res) {
         generationConfig: {
           response_mime_type: "application/json",
           response_schema: responseSchema,
-          max_output_tokens: 4000
+          max_output_tokens: 2500
         },
         contents: [
           {
             parts: [
-              { text: promptText },
+              { text: "제공된 영수증 이미지를 분석하여 스키마에 맞는 JSON 데이터를 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -96,7 +90,6 @@ export default async function handler(req, res) {
     });
 
     const responseText = await response.text();
-
     if (!response.ok) {
       return res.status(500).json({ error: 'AI 서버 통신 중 오류가 발생했습니다.' });
     }
