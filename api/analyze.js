@@ -116,19 +116,16 @@ export default async function handler(req, res) {
 
     let finalData;
     try {
-      finalData = JSON.parse(rawJsonText);
+      // [강력한 소독 로직] 문자열 값 내부에 포함된 위험한 줄바꿈/제어문자 정규식 일괄 치환
+      let sanitized = rawJsonText
+        .replace(/[\u0000-\u001F]+/g, " ") // 제어문자 제거
+        .replace(/(["\\])\s*\n\s*/g, "$1")  // 값 내부의 줄바꿈 제거
+        .replace(/\r?\n/g, " ");            // 개행문자 공백 치환
+
+      finalData = JSON.parse(sanitized);
     } catch (err) {
-      try {
-        let sanitized = rawJsonText
-          .replace(/\r?\n|\r/g, " ")
-          .replace(/[\u0000-\u001F]+/g, " ")
-          .replace(/,\s*([}\]])/g, '$1');
-          
-        finalData = JSON.parse(sanitized);
-      } catch (innerErr) {
-        console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
-        return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
-      }
+      console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
+      return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
     }
 
     return res.status(200).json(finalData);
