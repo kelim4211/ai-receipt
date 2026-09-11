@@ -116,12 +116,12 @@ export default async function handler(req, res) {
 
     let finalData;
     try {
-      // [강력한 소독 로직] 문자열 값 내부에 포함된 위험한 줄바꿈/제어문자 정규식 일괄 치환
+      // [정규식 일괄 소독 로직]
+      // AI 응답 텍스트 전체에서 제어문자와 실제 줄바꿈을 공백으로 평탄화하여 파싱 오류 원천 차단
       let sanitized = rawJsonText
-        .replace(/[\u0000-\u001F]+/g, " ") // 제어문자 제거
-        .replace(/(["\\])\s*\n\s*/g, "$1")  // 값 내부의 줄바꿈 제거
-        .replace(/\r?\n/g, " ");            // 개행문자 공백 치환
-
+        .replace(/[\u0000-\u001F]+/g, " ")
+        .replace(/\r?\n|\r/g, " ");
+          
       finalData = JSON.parse(sanitized);
     } catch (err) {
       console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
