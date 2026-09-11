@@ -18,9 +18,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    // 최신 고성능 Flash 모델 (gemini-3/6-flash) 적용
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-    
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`;
+
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
@@ -34,15 +33,22 @@ ETC: 항목명 | 금액
 - 외부 지식을 임의로 유추하지 말고, 영수증에 판독된 "유통사명 + 핵심 품목명 + 순수 품번" 조합으로 작성할 것 (예: 다이소 타포린백 1039523).
 - 품번이나 유통사 정보가 없으면 원본 품목명을 그대로 반영할 것.
 
+[정산 및 요약(ETC) 규칙]
+- 부가세(VAT), 과세물품가액, 면세물품가액 등 세금 관련 항목은 절대 추출하지 말고 제외할 것.
+- 총합계, 받은금액, 거스름돈, 단순 결제수단 금액도 제외. 오직 일괄 할인('총액 차감 (할인명)'), 포인트 사용 등 실질 차감 항목만 ETC로 기재할 것.
+
 [출력 예시]
 SHOP: 다이소 안양점 | 소매업 | 2026-03-29 | 123-45-67890 | 031-000-0000 | 경기도 안양시
 ITEM: 매장용 기본 타포린백(A)(1000)(90*35*35cm) [1039523] | 다이소 타포린백 1039523 | 1000 | 0 | 1000
 ITEM: 모조전지5매(약79*109 cm)1000 [1038020] | 다이소 모조전지 1038020 | 1000 | 0 | 1000
-ETC: 포인트 | 500`;
+ETC: 포인트 사용 | 500`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
       body: JSON.stringify({
         system_instruction: {
           parts: [{ text: systemPrompt }]
@@ -53,7 +59,7 @@ ETC: 포인트 | 500`;
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. JSON은 절대 사용하지 마시오." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 부가세는 제외하고, JSON은 절대 사용하지 마시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -63,7 +69,8 @@ ETC: 포인트 | 500`;
 
     const responseText = await response.text();
     if (!response.ok) {
-      return res.status(500).json({ error: 'AI 서버 통신 중 오류가 발생했습니다.' });
+      console.error("Gemini API Error Detail:", responseText);
+      return res.status(500).json({ error: `AI 서버 통신 실패 (${response.status}): ${responseText}` });
     }
 
     let parsedApiResponse;
@@ -90,7 +97,6 @@ ETC: 포인트 | 500`;
       products: []
     };
 
-    // 정제 헬퍼 함수
     const cleanStr = (str) => (str || '').replace(/^["']|["']$/g, '').trim();
     const cleanNum = (str, fallback = '0') => {
       if (!str) return fallback;
@@ -130,9 +136,11 @@ ETC: 포인트 | 500`;
         }
       } else if (trimmed.startsWith('ETC:')) {
         const parts = trimmed.substring(4).split('|').map(cleanStr);
-        if (parts[0]) {
+        const name = parts[0] || '';
+        // 부가세/세금 관련 항목 혹시 유입 시 서버단 2차 필터링
+        if (name && !/부가세|과세|세액|VAT/i.test(name)) {
           resultData.overallElements.push({
-            name: parts[0],
+            name: name,
             amount: cleanNum(parts[1], '0')
           });
         }
