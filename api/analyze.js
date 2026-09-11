@@ -20,36 +20,49 @@ export default async function handler(req, res) {
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
-    const systemPrompt = `전문 영수증 판독 AI. 마크다운 기호 없이 순수 JSON만 출력할 것.
-[엄격한 데이터 정제 및 검색 최적화 규칙]
-- productOcr: 영수증에 인쇄된 원본 텍스트를 대괄호와 품번, 규격 포함하여 그대로 100% 발췌할 것.
-- productAi: 상세 물리적 치수(cm 등)와 불필요한 기호는 과감히 제거하되, '유통사명 + 핵심 품목명 + 대괄호를 뺀 순수 품번' 조합으로 구성할 것 (예: "다이소 타포린백 1039523").
-- [줄바꿈 금지 지침]: JSON 문자열 값 내부에는 실제 줄바꿈(\\n)을 절대 넣지 말고, 여러 줄의 텍스트는 반드시 공백으로 이어 한 줄로 출력할 것.
-- 증정품은 totalPrice와 finalPrice를 "0"으로 처리.
-- 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements 제외. 전체 일괄 할인은 '총액 차감 (할인명)' 형태로 기재.`;
+    const systemPrompt = `전문 영수증 판독 AI. 영수증 이미지의 모든 품목과 금액을 누락 없이 정확하게 추출하십시오.`;
 
-    const promptText = `영수증 분석 후 아래 JSON 포맷으로만 응답하시오:
-{
-  "shopOcr": "상호명",
-  "shopName": "정식 상호명",
-  "shopIndustry": "업종·업태 및 한 줄 요약",
-  "date": "YYYY-MM-DD",
-  "bizNo": "사업자번호",
-  "phone": "전화번호",
-  "address": "매장주소",
-  "overallElements": [
-    { "name": "총액 차감 (할인명)", "amount": "할인은 -금액, 추가는 +금액" }
-  ],
-  "products": [
-    {
-      "productOcr": "원본 텍스트",
-      "productAi": "유통사명 + 핵심 품목명 + 순수 품번 (대괄호 제거, 줄바꿈 없음)",
-      "totalPrice": "우측 끝 인쇄 금액",
-      "discount": "할인액(없으면 0)",
-      "finalPrice": "실제 결제 금액"
-    }
-  ]
-}`;
+    const promptText = `영수증을 분석하여 지정된 JSON Schema 형식에 맞춰 데이터를 추출하시오. 품목명 내부에 실제 줄바꿈을 넣지 말고 한 줄로 평탄화하여 작성하시오.`;
+
+    // [핵심] API 레벨에서 JSON 구조와 타입을 엄격히 강제하는 스키마 정의
+    const responseSchema = {
+      type: "OBJECT",
+      properties: {
+        shopOcr: { type: "STRING" },
+        shopName: { type: "STRING" },
+        shopIndustry: { type: "STRING" },
+        date: { type: "STRING" },
+        bizNo: { type: "STRING" },
+        phone: { type: "STRING" },
+        address: { type: "STRING" },
+        overallElements: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              name: { type: "STRING" },
+              amount: { type: "STRING" }
+            },
+            required: ["name", "amount"]
+          }
+        },
+        products: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              productOcr: { type: "STRING" },
+              productAi: { type: "STRING" },
+              totalPrice: { type: "STRING" },
+              discount: { type: "STRING" },
+              finalPrice: { type: "STRING" }
+            },
+            required: ["productOcr", "productAi", "totalPrice", "discount", "finalPrice"]
+          }
+        }
+      },
+      required: ["shopOcr", "shopName", "date", "products"]
+    };
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -60,7 +73,8 @@ export default async function handler(req, res) {
         },
         generationConfig: {
           response_mime_type: "application/json",
-          max_output_tokens: 2000
+          response_schema: responseSchema, // API 구조 강제 적용
+          max_output_tokens: 4000
         },
         contents: [
           {
@@ -104,12 +118,15 @@ export default async function handler(req, res) {
       finalData = JSON.parse(rawJsonText);
     } catch (err) {
       try {
+        // [이중 방어] 혹시라도 남어있는 줄바꿈이나 제어문자를 강제 치환
         let sanitized = rawJsonText
-          .replace(/\r?\n|\r/g, " ") 
-          .replace(/[\u0000-\u001F]+/g, " ") 
+          .replace(/\r?\n|\r/g, " ")
+          .replace(/[\u0000-\u001F]+/g, " ")
           .replace(/,\s*([}\]])/g, '$1');
+          
         finalData = JSON.parse(sanitized);
       } catch (innerErr) {
+        console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
         return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
       }
     }
