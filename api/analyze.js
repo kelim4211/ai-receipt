@@ -18,53 +18,26 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    const systemPrompt = `전문 영수증 판독 AI. 지정된 JSON Schema 형식에 맞춰 데이터를 정확히 추출할 것.
-[데이터 정제 및 조합 원칙]
-1. productOcr: 영수증 원본 텍스트를 줄바꿈 없이 한 줄로 평탄화하여 그대로 발췌할 것.
-2. productAi: 외부 지식 배제, 오직 영수증 판독 정보만 활용. 상세 치수(cm 등)와 기호 제거 후 "유통사명 + 핵심 품목명 + 대괄호 없는 순수 품번" 조합으로 작성 (예: "다이소 타포린백 1039523"). 정보 부족 시 원본 반영.
-3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\n) 금지, 한 줄로 출력할 것.
-4. 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements 제외. 일괄 할인은 '총액 차감 (할인명)' 기재.`;
+    const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
+오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
-    const responseSchema = {
-      type: "OBJECT",
-      properties: {
-        shopOcr: { type: "STRING" },
-        shopName: { type: "STRING" },
-        shopIndustry: { type: "STRING" },
-        date: { type: "STRING" },
-        bizNo: { type: "STRING" },
-        phone: { type: "STRING" },
-        address: { type: "STRING" },
-        overallElements: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              name: { type: "STRING" },
-              amount: { type: "STRING" }
-            },
-            required: ["name", "amount"]
-          }
-        },
-        products: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              productOcr: { type: "STRING" },
-              productAi: { type: "STRING" },
-              totalPrice: { type: "STRING" },
-              discount: { type: "STRING" },
-              finalPrice: { type: "STRING" }
-            },
-            required: ["productOcr", "productAi", "totalPrice", "discount", "finalPrice"]
-          }
-        }
-      },
-      required: ["shopOcr", "shopName", "date", "products"]
-    };
+[출력 양식]
+SHOP: 상호명 | 업종 | 일자 | 사업자번호 | 전화번호 | 주소
+ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
+ETC: 항목명 | 금액
+
+[복원제품명 작성 규칙]
+- 상세 물리적 치수(cm, mm 등)와 기호(*, 괄호 등)는 과감히 제거할 것.
+- 외부 지식을 임의로 유추하지 말고, 영수증에 판독된 "유통사명 + 핵심 품목명 + 순수 품번" 조합으로 작성할 것 (예: 다이소 타포린백 1039523).
+- 품번이나 유통사 정보가 없으면 원본 품목명을 그대로 반영할 것.
+
+[출력 예시]
+SHOP: 다이소 안양점 | 소매업 | 2026-03-29 | 123-45-67890 | 031-000-0000 | 경기도 안양시
+ITEM: 매장용 기본 타포린백(A)(1000)(90*35*35cm) [1039523] | 다이소 타포린백 1039523 | 1000 | 0 | 1000
+ITEM: 모조전지5매(약79*109 cm)1000 [1038020] | 다이소 모조전지 1038020 | 1000 | 0 | 1000
+ETC: 포인트 | 500`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -74,14 +47,12 @@ export default async function handler(req, res) {
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          response_mime_type: "application/json",
-          response_schema: responseSchema,
-          max_output_tokens: 4000 // 4000 토큰 설정
+          max_output_tokens: 8000
         },
         contents: [
           {
             parts: [
-              { text: "제공된 영수증 이미지를 분석하여 스키마에 맞는 JSON 데이터를 출력하시오." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. JSON은 절대 사용하지 마시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -98,46 +69,78 @@ export default async function handler(req, res) {
     try {
       parsedApiResponse = JSON.parse(responseText);
     } catch (e) {
-      return res.status(500).json({ error: 'AI 응답 형식을 처리하는 중 오류가 발생했습니다.' });
+      return res.status(500).json({ error: 'AI 응답 수신 중 오류가 발생했습니다.' });
     }
 
-    let rawJsonText = parsedApiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!rawJsonText) {
-      return res.status(500).json({ error: 'AI가 빈 응답을 반환했습니다.' });
+    const rawText = parsedApiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!rawText) {
+      return res.status(500).json({ error: 'AI 분석 결과가 비어 있습니다.' });
     }
 
-    rawJsonText = rawJsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    const firstBrace = rawJsonText.indexOf('{');
-    const lastBrace = rawJsonText.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      rawJsonText = rawJsonText.substring(firstBrace, lastBrace + 1);
-    }
+    const resultData = {
+      shopOcr: '',
+      shopName: '',
+      shopIndustry: '',
+      date: '',
+      bizNo: '',
+      phone: '',
+      address: '',
+      overallElements: [],
+      products: []
+    };
 
-    let finalData;
-    try {
-      // 1차 소독 및 파싱 시도
-      let sanitized = rawJsonText
-        .replace(/[\u0000-\u001F]+/g, " ")
-        .replace(/\r?\n|\r/g, " ");
-      finalData = JSON.parse(sanitized);
-    } catch (err1) {
-      try {
-        // 2차 강력 소독 및 파싱 시도
-        let aggressiveSanitized = rawJsonText
-          .replace(/[\u0000-\u001F]+/g, " ")
-          .replace(/\r?\n|\r/g, " ")
-          .replace(/,\s*([}\]])/g, '$1');
-        finalData = JSON.parse(aggressiveSanitized);
-      } catch (err2) {
-        console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
-        return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
+    // 정제 헬퍼 함수
+    const cleanStr = (str) => (str || '').replace(/^["']|["']$/g, '').trim();
+    const cleanNum = (str, fallback = '0') => {
+      if (!str) return fallback;
+      const val = str.replace(/,/g, '').trim();
+      return val || fallback;
+    };
+
+    const lines = rawText.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith('SHOP:')) {
+        const parts = trimmed.substring(5).split('|').map(cleanStr);
+        resultData.shopName = parts[0] || '상호명 미확인';
+        resultData.shopOcr = parts[0] || '';
+        resultData.shopIndustry = parts[1] || '';
+        resultData.date = parts[2] || '';
+        resultData.bizNo = parts[3] || '';
+        resultData.phone = parts[4] || '';
+        resultData.address = parts[5] || '';
+      } else if (trimmed.startsWith('ITEM:')) {
+        const parts = trimmed.substring(5).split('|').map(cleanStr);
+        if (parts[0]) {
+          const rawTotal = cleanNum(parts[2], '0');
+          const rawDiscount = cleanNum(parts[3], '0');
+          const rawFinal = cleanNum(parts[4], rawTotal);
+
+          resultData.products.push({
+            productOcr: parts[0],
+            productAi: parts[1] || parts[0],
+            totalPrice: rawTotal,
+            discount: rawDiscount,
+            finalPrice: rawFinal
+          });
+        }
+      } else if (trimmed.startsWith('ETC:')) {
+        const parts = trimmed.substring(4).split('|').map(cleanStr);
+        if (parts[0]) {
+          resultData.overallElements.push({
+            name: parts[0],
+            amount: cleanNum(parts[1], '0')
+          });
+        }
       }
     }
 
-    return res.status(200).json(finalData);
+    return res.status(200).json(resultData);
 
   } catch (error) {
-    return res.status(500).json({ error: error.message || '서버 에러가 발생했습니다.' });
+    return res.status(500).json({ error: error.message || '서버 내부 처리 오류가 발생했습니다.' });
   }
 }
