@@ -20,11 +20,19 @@ export default async function handler(req, res) {
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
-    const systemPrompt = `전문 영수증 판독 AI. 영수증 이미지의 모든 품목과 금액을 누락 없이 정확하게 추출하십시오.`;
+    const systemPrompt = `전문 영수증 판독 AI. 
+[핵심 데이터 가공 및 정제 규칙]
+1. productOcr: 영수증에 인쇄된 원본 텍스트를 줄바꿈 없이 한 줄로 평탄화하여 그대로 발췌할 것.
+2. productAi (필수 준수): 
+   - 상세 물리적 치수(cm 등)와 불필요한 기호(*, 괄호 등)는 과감히 제거할 것.
+   - 반드시 "유통사명 + 핵심 품목명 + 대괄호를 뺀 순수 품번" 형태로 조합하여 작성할 것. (예: "다이소 타포린백 1039523")
+   - 원본 텍스트를 단순히 그대로 복사하지 말고 위 가공 규칙을 철저히 적용할 것.
+3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\\n)를 절대 넣지 말고 한 줄로 이어 출력할 것.
+4. 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements에서 제외하고 전체 일괄 할인은 '총액 차감 (할인명)' 형태로 기재할 것.`;
 
-    const promptText = `영수증을 분석하여 지정된 JSON Schema 형식에 맞춰 데이터를 추출하시오. 품목명 내부에 실제 줄바꿈을 넣지 말고 한 줄로 평탄화하여 작성하시오.`;
+    const promptText = `영수증을 분석하여 지정된 JSON Schema 형식에 맞춰 데이터를 추출하시오.`;
 
-    // [핵심] API 레벨에서 JSON 구조와 타입을 엄격히 강제하는 스키마 정의
+    // API 구조 및 타입 강제 스키마
     const responseSchema = {
       type: "OBJECT",
       properties: {
@@ -73,7 +81,7 @@ export default async function handler(req, res) {
         },
         generationConfig: {
           response_mime_type: "application/json",
-          response_schema: responseSchema, // API 구조 강제 적용
+          response_schema: responseSchema,
           max_output_tokens: 4000
         },
         contents: [
@@ -118,7 +126,6 @@ export default async function handler(req, res) {
       finalData = JSON.parse(rawJsonText);
     } catch (err) {
       try {
-        // [이중 방어] 혹시라도 남어있는 줄바꿈이나 제어문자를 강제 치환
         let sanitized = rawJsonText
           .replace(/\r?\n|\r/g, " ")
           .replace(/[\u0000-\u001F]+/g, " ")
