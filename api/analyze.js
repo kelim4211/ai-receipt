@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 [데이터 정제 및 조합 원칙]
 1. productOcr: 영수증 원본 텍스트를 줄바꿈 없이 한 줄로 평탄화하여 그대로 발췌할 것.
 2. productAi: 외부 지식 배제, 오직 영수증 판독 정보만 활용. 상세 치수(cm 등)와 기호 제거 후 "유통사명 + 핵심 품목명 + 대괄호 없는 순수 품번" 조합으로 작성 (예: "다이소 타포린백 1039523"). 정보 부족 시 원본 반영.
-3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\\n) 금지, 한 줄로 출력할 것.
+3. JSON 문자열 값 내부에 실제 줄바꿈 문자(\n) 금지, 한 줄로 출력할 것.
 4. 세금, 총합계, 받은금액, 거스름돈, 단순 결제수단 금액은 overallElements 제외. 일괄 할인은 '총액 차감 (할인명)' 기재.`;
 
     const responseSchema = {
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         generationConfig: {
           response_mime_type: "application/json",
           response_schema: responseSchema,
-          max_output_tokens: 2500
+          max_output_tokens: 4000 // 4000 토큰 설정
         },
         contents: [
           {
@@ -116,16 +116,23 @@ export default async function handler(req, res) {
 
     let finalData;
     try {
-      // [정규식 일괄 소독 로직]
-      // AI 응답 텍스트 전체에서 제어문자와 실제 줄바꿈을 공백으로 평탄화하여 파싱 오류 원천 차단
+      // 1차 소독 및 파싱 시도
       let sanitized = rawJsonText
         .replace(/[\u0000-\u001F]+/g, " ")
         .replace(/\r?\n|\r/g, " ");
-          
       finalData = JSON.parse(sanitized);
-    } catch (err) {
-      console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
-      return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
+    } catch (err1) {
+      try {
+        // 2차 강력 소독 및 파싱 시도
+        let aggressiveSanitized = rawJsonText
+          .replace(/[\u0000-\u001F]+/g, " ")
+          .replace(/\r?\n|\r/g, " ")
+          .replace(/,\s*([}\]])/g, '$1');
+        finalData = JSON.parse(aggressiveSanitized);
+      } catch (err2) {
+        console.error("JSON 파싱 최종 실패 원본:", rawJsonText);
+        return res.status(500).json({ error: '영수증 데이터 구조 파싱 중 오류가 발생했습니다.' });
+      }
     }
 
     return res.status(200).json(finalData);
