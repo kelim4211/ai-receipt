@@ -29,8 +29,8 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 
 [금액 추출 핵심 규칙 - 필수 준수]
-- '단가 | 수량 | 금액' 순서로 여러 숫자가 있을 경우, 낱개 단가가 아니라 반드시 "가장 오른쪽에 인쇄된 단가x수량 곱한 최종 금액"을 [단가또는총액]과 [최종금액]에 기재할 것.
-  (예: '롯데 수박바젤리 56   980   2   1,960' 일 때 금액은 980이 아니라 1960을 추출)
+- 품목 라인에 숫자가 여러 개 있든(단가/수량/금액), 단가나 수량 중 일부 정보가 누락되어 있든 무관하게, 항상 "해당 품목 라인의 가장 오른쪽에 인쇄된 최종 금액(단가x수량 합산액)"을 [단가또는총액]과 [최종금액]에 기재할 것.
+  * 단가 980, 수량 2, 금액 1,960인 경우 ➔ 낱개 단가 980이 아닌 가장 오른쪽인 1960을 추출할 것.
 
 [복원제품명 작성 규칙]
 - 영수증 인쇄 글자 수 한계로 끊긴 단어는 온전한 완제품 명칭으로 자연스럽게 복원하십시오.
@@ -62,7 +62,7 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 금액은 낱개 단가가 아닌 가장 오른쪽의 (단가x수량) 합계 금액을 가져오고, 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목 금액은 단가나 수량이 아닌 맨 우측 최종 합산 금액을 가져오고, 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -127,16 +127,16 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          const rawTotal = cleanNum(parts[2], '0');
+          // AI가 보낸 값 중 가장 우측의 최종 합산 금액을 타겟 금액으로 확정
+          const targetPrice = cleanNum(parts[4] || parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
-          const rawFinal = cleanNum(parts[4], rawTotal);
 
           resultData.products.push({
             productOcr: parts[0],
             productAi: parts[1] || parts[0],
-            totalPrice: rawTotal,
+            totalPrice: targetPrice, // '단가*수량' 칸에 최종 곱한 값(1,960) 주입 -> 품목 정가 합계 정확히 일치
             discount: rawDiscount,
-            finalPrice: rawFinal
+            finalPrice: targetPrice  // 최종 금액 칸에도 1,960 주입
           });
         }
       } else if (trimmed.startsWith('ETC:')) {
