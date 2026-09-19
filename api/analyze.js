@@ -28,14 +28,10 @@ SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번�
 ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 
-[필수 작성 규칙]
-- SHOP 라인은 반드시 'SHOP:'으로 시작하고 각 항목을 파이프(|)로 구분하십시오.
-- [업종및가게성격]은 상호와 품목을 분석해 '업종 (주력 판매 제품군 및 성격)' 형태의 짧은 한 문장으로 반드시 작성하십시오.
-- 코스트코 등 CPN(할인) 행이 제품 바로 아랫줄에 나오는 경우, 이를 독립된 품목으로 취급하지 말고 제품 행과 연계하여 정확히 추출하십시오.
-
-[유통사 및 코스트코 영수증 할인 체계 공통 규칙]
-- 유통사별 영수증 할인 구조 유형을 지능적으로 참고하여 금액을 산출하십시오.
-- 코스트코 영수증의 경우, 할인 전 가격은 'T'로 끝나며, 할인가격은 오른쪽에 '-T' 형태로 표기됩니다. 즉, '-T' 바로 위에 위치한 가격이 '단가*수량'에 해당하며, 그 아래 또는 연관된 '-T' 금액이 할인가격에 해당합니다. 이 체계를 적용하여 정가와 할인액, 최종금액을 정확히 분리 추출하십시오.
+[코스트코 및 2줄 영수증 할인 체계 완벽 준수 규칙]
+- 윗줄에 위치한 본품 행이 '단가*수량(할인 전 정가)'이며, 그 바로 아랫줄에 '-T'로 표기된 행이 해당 제품의 '할인액'입니다.
+- 아랫줄의 '-T' 금액은 무조건 바로 위 윗줄 제품의 할인액으로 정확히 매칭하여 추출하십시오.
+- 단가*수량 칸에는 반드시 할인 전 원래 정가를 기재하고, 아랫줄의 '-T' 금액을 할인액 칸에 정확히 분리하십시오.
 
 [정산 및 요약(ETC) 금지 규칙]
 - '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
@@ -57,7 +53,7 @@ ETC: 항목명 | 금액
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 유통사별 할인 구조와 코스트코 체계(-T 바로 위 가격이 단가*수량, -T 금액이 할인가)를 반영해 [출력 양식]에 맞춰 줄 단위로 추출하시오." },
+              { text: "영수증 이미지의 2줄 구조(윗줄 정가, 아랫줄 -T 할인가)를 완벽히 반영하여 [출력 양식]에 맞춰 줄 단위로 추출하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -121,11 +117,13 @@ ETC: 항목명 | 금액
         resultData.phone = parts[4] || '미확인';
         resultData.address = parts[5] || '미확인';
       } else if (trimmed.includes('-T') || trimmed.includes('CPN') || trimmed.toLowerCase().includes('cpn') || trimmed.includes('IRC') || trimmed.includes('할인')) {
+        // 아랫줄에 위치한 -T 할인가를 바로 직전 윗줄 제품의 할인액으로 정확히 매칭
         const matchNums = trimmed.match(/\d[\d,.]*/g);
         if (matchNums && matchNums.length > 0 && lastProduct) {
           const discountVal = Number(cleanNum(matchNums[matchNums.length - 1], '0'));
           if (discountVal > 0 && discountVal < 50000) {
             lastProduct.discount = String(discountVal);
+            // 정가(단가*수량) = 최종금액 + 할인액 계산하여 원래 정가 복원
             const origNum = Number(lastProduct.totalPrice) + discountVal;
             lastProduct.totalPrice = String(origNum);
           }
@@ -145,7 +143,7 @@ ETC: 항목명 | 금액
           };
 
           resultData.products.push(newProd);
-          lastProduct = newProd;
+          lastProduct = newProd; // 윗줄 제품을 기억하여 아랫줄 -T가 곧바로 매칭되도록 지정
         }
       } else if (trimmed.startsWith('ETC:')) {
         const parts = trimmed.substring(4).split('|').map(cleanStr);
