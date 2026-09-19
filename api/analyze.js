@@ -28,10 +28,9 @@ SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번�
 ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 
-[백엔드 응용 가이드 - 영수증 할인 확장 공통 원칙]
-1. 임시 수집 원칙: 제품명/단가 행(ITEM:)과 할인 행(CPN, 행사할인, 포인트 차감 등)을 순차적으로 리스트에 수집하십시오.
-2. 역방향 바인딩 원칙: 할인 행을 만나면 독립된 품목으로 처리하지 말고, 가장 최근에 등록된 유효한 제품 품목의 할인액으로 정확히 매칭(연동)하십시오.
-3. 수학적 정가 역산 원칙: 영수증에 적힌 금액이 이미 할인이 적용된 최종가인 경우, '정가 = 최종금액 + 할인액' 공식을 적용하여 원래의 정가를 역으로 계산하여 기재하십시오.
+[유통사 및 코스트코 영수증 할인 체계 공통 규칙]
+- 유통사별 영수증 할인 구조 유형을 지능적으로 참고하여 금액을 산출하십시오.
+- 코스트코 영수증의 경우, 할인 전 가격은 'T'로 끝나며, 할인가격은 오른쪽에 '-T' 형태로 표기됩니다. 즉, '-T' 바로 위에 위치한 가격이 '단가*수량'에 해당하며, 그 아래 또는 연관된 '-T' 금액이 할인가격에 해당합니다. 이 체계를 적용하여 정가와 할인액, 최종금액을 정확히 분리 추출하십시오.
 
 [정산 및 요약(ETC) 금지 규칙]
 - '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
@@ -53,7 +52,7 @@ ETC: 항목명 | 금액
         contents: [
           {
             parts: [
-              { text: "영수증 이미지의 할인 구조를 백엔드 응용 가이드 공통 원칙(순차적 수집, 역방향 바인딩, 수학적 정가 역산)에 맞춰 [출력 양식]대로 줄 단위로 추출하시오." },
+              { text: "영수증 이미지를 분석하여 유통사별 할인 구조와 코스트코 체계(-T 바로 위 가격이 단가*수량, -T 금액이 할인가)를 반영해 [출력 양식]에 맞춰 줄 단위로 추출하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -116,14 +115,12 @@ ETC: 항목명 | 금액
         resultData.bizNo = parts[3] || '미확인';
         resultData.phone = parts[4] || '미확인';
         resultData.address = parts[5] || '미확인';
-      } else if (trimmed.includes('CPN') || trimmed.toLowerCase().includes('cpn') || trimmed.includes('-T') || trimmed.includes('IRC') || trimmed.includes('할인')) {
-        // 백엔드 응용 가이드: 역방향 바인딩 원칙 (할인 행을 직전 제품 품목의 할인액으로 매칭)
+      } else if (trimmed.includes('-T') || trimmed.includes('CPN') || trimmed.toLowerCase().includes('cpn') || trimmed.includes('IRC') || trimmed.includes('할인')) {
         const matchNums = trimmed.match(/\d[\d,.]*/g);
         if (matchNums && matchNums.length > 0 && lastProduct) {
           const discountVal = Number(cleanNum(matchNums[matchNums.length - 1], '0'));
           if (discountVal > 0 && discountVal < 50000) {
             lastProduct.discount = String(discountVal);
-            // 백엔드 응용 가이드: 수학적 정가 역산 원칙 (정가 = 최종금액 + 할인액)
             const origNum = Number(lastProduct.totalPrice) + discountVal;
             lastProduct.totalPrice = String(origNum);
           }
@@ -143,7 +140,7 @@ ETC: 항목명 | 금액
           };
 
           resultData.products.push(newProd);
-          lastProduct = newProd; // 가장 최근에 등록된 유효한 제품 품목으로 추적
+          lastProduct = newProd;
         }
       } else if (trimmed.startsWith('ETC:')) {
         const parts = trimmed.substring(4).split('|').map(cleanStr);
