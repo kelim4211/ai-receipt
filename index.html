@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>지능형 AI 소비지출 판독앱</title>
+  <title>지능형 AI 지출항목 판독앱</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
@@ -70,7 +70,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-[10px] font-black text-brand-300 tracking-tight leading-none mb-1">가계동향조사를 위한</p>
-          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 소비지출 판독앱</h1>
+          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 지출항목 판독앱</h1>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
@@ -169,7 +169,7 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
-                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">주소 검색</button>
+                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">지도검색</button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
@@ -412,9 +412,8 @@
       setTxt('part1ShopOcr', data.shopOcr || '-');
       setTxt('part1ShopName', currentShopName);
       
-      // 업종업태 필드 확실하게 매핑 (부족/없을 시 미상 처리)
       const resolvedIndustry = data.shopIndustry || data.shopMatchBasis || '';
-      setTxt('part1MatchBasis', (resolvedIndustry && resolvedIndustry !== '미확인') ? resolvedIndustry : '미상');
+      setTxt('part1MatchBasis', resolvedIndustry ? resolvedIndustry : '업종 정보 미확인');
 
       setTxt('part1BizNo', data.bizNo || '미확인');
       setTxt('part1Phone', data.phone || '미확인');
@@ -537,17 +536,20 @@
       
       if (!combinedTarget) return;
       
-      // 1. 기존 네이버 지도 팝업창 연동 유지
       openCompactPopup(`https://search.naver.com/search.naver?query=${encodeURIComponent(combinedTarget)}`);
 
-      // 2. 실시간 업종 자동 발췌 및 즉시 반영 (부족 시 '미상')
       const targetEl = document.getElementById('part1MatchBasis');
       if (targetEl) {
         targetEl.innerText = "조회 중...";
       }
 
       try {
-        const res = await fetch(`/api/search-category?query=${encodeURIComponent(combinedTarget)}`);
+        const res = await fetch("/api/search-category", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: combinedTarget })
+        });
+
         if (res.ok) {
           const data = await res.json();
           if (data && data.category && data.category !== '미상') {
@@ -579,4 +581,3 @@
   </script>
 </body>
 </html>
-```[cite: 3]
