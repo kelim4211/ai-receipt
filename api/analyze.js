@@ -1,5 +1,44 @@
 export const maxDuration = 30;
 
+function sanitizeAddress(addr) {
+  if (!addr || addr.includes("미확인")) return "";
+  return addr
+    .replace(/\(.*?\)/g, '')
+    .replace(/\d+동|\d+층|\d+호|[A-Za-z0-9_-]+호/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function fetchLiveCategory(shopName, address) {
+  try {
+    const cleanShop = (shopName || '').replace(/미확인/g, '').trim();
+    const cleanAddr = sanitizeAddress(address);
+    const query = `${cleanShop} ${cleanAddr}`.trim();
+    if (!query || cleanShop.length < 2) return null;
+
+    const searchUrl = `https://search.daum.net/search?w=tot&q=${encodeURIComponent(query)}`;
+    const response = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) return null;
+    const html = await response.text();
+
+    // 포털 장소 검색 결과의 카테고리 태그 발췌
+    const match = html.match(/class="(?:txt_category|category|txt_sub)"[^>]*>([^<]+)<\//i) ||
+                  html.match(/data-category="([^"]+)"/i);
+
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: '잘못된 접근입니다.' });
@@ -29,9 +68,7 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 
 [상호명 및 업종업태 판독 규칙]
-- SHOP 라인의 '업종및가게성격'은 '상호명 + 도로명주소'를 지도앱에 검색했을 때 나오는 공식 등록 업종·업태를 그대로 발췌하고, 추가적으로 매장 특징을 덧붙여 아주 짧은 한 문장으로 정리하십시오.
-  * 형식: [공식 등록 업종] - [매장 특징]
-  * 예: '카페,디저트 - 테이크아웃 및 베이커리 전문 카페', '창고형할인매장 - 회원제 대형 마트', '한식 - 삼겹살 전문 구이점'
+- SHOP 라인의 '업종및가게성격'은 상호명과 매장주소를 바탕으로 지도에 등록된 공식 업종 및 매장 특성을 파악하여 작성하십시오.
 
 [유통사 및 영수증 체계 지능형 판독 규칙]
 - 코스트코, 이마트, 롯데마트, 홈플러스 등 다양한 유통사별 영수증 형태와 할인 체계를 지능적으로 판단하여 분석하십시오.
@@ -62,7 +99,7 @@ ETC: 항목명 | 금액
         contents: [
           {
             parts: [
-              { text: "영수증 이미지의 유통사별 형태와 할인 구조를 분석하여 [출력 양식]에 맞춰 줄 단위로 정확히 추출하시오. 업종및가게성격은 지도앱에 등록된 공식 업종을 그대로 발췌하고 매장 특징을 아주 짧게 덧붙여 작성하며, 품목 목록이 없는 승인 전표는 [상호명] 이용료 형태의 단일 ITEM으로 구성하시오." },
+              { text: "영수증 이미지의 유통사별 형태와 할인 구조를 분석하여 [출력 양식]에 맞춰 줄 단위로 정확히 추출하시오. 품목 목록이 없는 승인 전표는 [상호명] 이용료 형태의 단일 ITEM으로 구성하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -164,6 +201,12 @@ ETC: 항목명 | 금액
           });
         }
       }
+    }
+
+    // 지도 실시간 등록 업종 자동 발췌 및 즉시 반영
+    const liveCategory = await fetchLiveCategory(resultData.shopName, resultData.address);
+    if (liveCategory) {
+      resultData.shopIndustry = liveCategory;
     }
 
     return res.status(200).json(resultData);
