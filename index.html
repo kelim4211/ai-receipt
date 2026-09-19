@@ -336,7 +336,8 @@
         imageSmoothingQuality: 'high'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
+      // 최적화 반영: 해상도는 1024 유지하되, JPEG 압축 품질을 0.75로 조정하여 용량 및 전송 시간 단축
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.75);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -450,7 +451,6 @@
         const card = document.createElement('div');
         card.className = "bg-white border-2 border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-sm text-xs";
         
-        // 요청 반영: 단가*수량 칸에 영수증 가장 오른쪽 최종 금액(calculatedItemAmount 또는 finalPrice)을 표시하도록 수정
         card.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
             <div class="flex items-center gap-1.5 min-w-0 flex-1">
