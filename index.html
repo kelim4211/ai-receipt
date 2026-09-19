@@ -158,7 +158,8 @@
             </div>
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-start gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">복원 프로세스:</span>
+                <!-- 변경됨: 복원 프로세스 -> 업종업태 -->
+                <span class="text-slate-500 font-bold w-24 shrink-0">업종업태:</span>
                 <span id="part1MatchBasis" class="font-bold text-slate-700 text-[10px] flex-1">-</span>
               </div>
               <div class="flex items-center gap-2">
@@ -450,7 +451,6 @@
         const card = document.createElement('div');
         card.className = "bg-white border-2 border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-sm text-xs";
         
-        // 단가*수량 칸에 영수증 가장 우측 값(calculatedItemAmount) 매핑
         card.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
             <div class="flex items-center gap-1.5 min-w-0 flex-1">
