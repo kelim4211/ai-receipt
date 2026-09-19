@@ -158,22 +158,22 @@
             </div>
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-start gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">업종업태:</span>
-                <span id="part1MatchBasis" class="font-bold text-slate-700 text-[10px] flex-1">-</span>
+                <span class="text-slate-500 font-bold w-20 shrink-0">업종업태:</span>
+                <span id="part1MatchBasis" class="font-black text-brand-700 text-[11px] flex-1">-</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">사업자번호:</span>
+                <span class="text-slate-500 font-bold w-20 shrink-0">사업자번호:</span>
                 <span id="part1BizNo" class="font-bold text-slate-900 text-[10.5px] flex-1">미확인</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
+                <span class="text-slate-500 font-bold w-20 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
                   <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">지도검색</button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">전화번호:</span>
+                <span class="text-slate-500 font-bold w-20 shrink-0">전화번호:</span>
                 <span id="part1Phone" class="font-bold text-slate-900 text-[10.5px] flex-1">미확인</span>
               </div>
             </div>
@@ -347,7 +347,7 @@
       if (previewCont) previewCont.classList.add('hidden');
 
       const scanBadge = document.getElementById('scanStatusBadge');
-      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (분석 대기)`;
+      if (scanBadge) scanBadge.innerText = "● " + currentSelectedSource + " 영역 지정됨 (분석 대기)";
 
       cancelCrop();
     }
@@ -413,7 +413,7 @@
       setTxt('part1ShopName', currentShopName);
       
       const resolvedIndustry = data.shopIndustry || data.shopMatchBasis || '';
-      setTxt('part1MatchBasis', resolvedIndustry ? resolvedIndustry : '업종 정보 미확인');
+      setTxt('part1MatchBasis', (resolvedIndustry && resolvedIndustry !== '미확인') ? resolvedIndustry : '미상');
 
       setTxt('part1BizNo', data.bizNo || '미확인');
       setTxt('part1Phone', data.phone || '미확인');
@@ -422,11 +422,11 @@
       setTxt('part1Address', currentShopAddress);
       
       const copyBtn = document.getElementById('copyAddressBtn');
-      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.remove('hidden');
+      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.add('hidden');
 
       const products = data.products || [];
       const overallElements = data.overallElements || [];
-      setTxt('productCountBadge', `총 ${products.length}개 품목`);
+      setTxt('productCountBadge', "총 " + products.length + "개 품목");
 
       const cardListContainer = document.getElementById('productCardList');
       if(!cardListContainer) return;
@@ -528,7 +528,7 @@
         .trim();
     }
 
-    function openAddressSearch() { 
+    async function openAddressSearch() { 
       const cleanShop = (currentShopName && currentShopName.indexOf("미확인") === -1) ? currentShopName.trim() : "";
       const baseAddr = (currentShopAddress && currentShopAddress.indexOf("미확인") === -1) ? currentShopAddress.trim() : "";
       
@@ -538,6 +538,27 @@
       if (!combinedTarget) return;
       
       openCompactPopup("https://map.naver.com/p/search/" + encodeURIComponent(combinedTarget));
+
+      const targetEl = document.getElementById('part1MatchBasis');
+      if (targetEl) {
+        targetEl.innerText = "조회 중...";
+      }
+
+      try {
+        const res = await fetch("/api/search-category?query=" + encodeURIComponent(combinedTarget));
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.category && data.category !== '미상') {
+            if (targetEl) targetEl.innerText = data.category;
+          } else {
+            if (targetEl) targetEl.innerText = "미상";
+          }
+        } else {
+          if (targetEl) targetEl.innerText = "미상";
+        }
+      } catch (e) {
+        if (targetEl) targetEl.innerText = "미상";
+      }
     }
     
     function resetSystem() { 
