@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+=<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -520,12 +520,13 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    // 지도 검색 버튼 클릭 시 상호명 + 도로명 주소 범위(~로, ~길)까지만 조합하여 팝업창 오픈
+    // 지도 검색 버튼 클릭 시 상호명 정제 및 ~로/~길 단위까지만 주소 조합하여 네이버 지도 검색 팝업 오픈
     function openMapSearch() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
       }
 
+      // 1. 주소에서 '~로' 또는 '~길'이 포함된 단어 위치까지만 추출
       let addressParts = currentShopAddress.trim().split(/\s+/);
       let cutoffIndex = -1;
       for (let i = 0; i < addressParts.length; i++) {
@@ -539,7 +540,16 @@
         ? addressParts.slice(0, cutoffIndex + 1).join(" ") 
         : addressParts.slice(0, 3).join(" ");
 
-      let cleanShopName = (currentShopName && currentShopName !== "상호명 미확인") ? currentShopName.trim() : "";
+      // 2. 상호명에서 (주), 유한회사 등 불필요한 법인 표기나 특수문자 제거
+      let cleanShopName = "";
+      if (currentShopName && currentShopName !== "상호명 미확인") {
+        cleanShopName = currentShopName
+          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)/g, "")
+          .replace(/주식회사|유한회사/g, "")
+          .trim();
+      }
+
+      // 3. 상호명과 최적화된 도로명 주소(~로/~길까지) 결합
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
 
       let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
