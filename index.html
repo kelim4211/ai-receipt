@@ -169,7 +169,7 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
-                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">지도검색</button>
+                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">주소 검색</button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
@@ -330,13 +330,13 @@
       if (!cropperInstance) return;
 
       const croppedCanvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 1600,
+        maxHeight: 1600,
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.75);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -422,7 +422,7 @@
       setTxt('part1Address', currentShopAddress);
       
       const copyBtn = document.getElementById('copyAddressBtn');
-      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.add('hidden');
+      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.remove('hidden');
 
       const products = data.products || [];
       const overallElements = data.overallElements || [];
@@ -439,13 +439,13 @@
       const fragment = document.createDocumentFragment();
 
       products.forEach((item, index) => {
-        let numOrig = Number(String(item.totalPrice || item.finalPrice || 0).replace(/[^0-9]/g, ''));
+        let originalPrice = Number(String(item.totalPrice || item.finalPrice || 0).replace(/[^0-9]/g, ''));
         let numDisc = Number(String(item.discount || 0).replace(/[^0-9]/g, ''));
-        let calculatedItemAmount = Number(String(item.finalPrice || numOrig).replace(/[^0-9]/g, ''));
+        let finalPrice = Number(String(item.finalPrice || (originalPrice - numDisc)).replace(/[^0-9]/g, ''));
         
-        totalOriginalSum += numOrig;
+        totalOriginalSum += originalPrice;
         totalProductDiscountSum += numDisc;
-        totalCalculatedProductsAmount += calculatedItemAmount;
+        totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
         const searchURL = getSmartSearchURL(resolvedQuery);
@@ -464,13 +464,13 @@
             </button>
           </div>
           <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span class="text-[10px] text-brand-600 font-bold">복원 제품명 (발췌)</span>
+            <span class="text-[10px] text-brand-600 font-bold">복원 제품명</span>
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
-            <div><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${calculatedItemAmount.toLocaleString()}</span></div>
+            <div><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${originalPrice.toLocaleString()}</span></div>
             <div class="border-x"><span class="text-[9px] text-slate-500 block">할인액</span><span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span></div>
-            <div><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${calculatedItemAmount.toLocaleString()}</span></div>
+            <div><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${finalPrice.toLocaleString()}</span></div>
           </div>
         `;
 
@@ -518,51 +518,11 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    function sanitizeAddressForMap(addr) {
-      if (!addr || addr.includes("미확인")) return "";
-      return addr
-        .replace(/\(.*?\)/g, '')
-        .replace(/\d+동|\d+층|\d+호|[A-Za-z0-9_-]+호/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
-    async function openAddressSearch() { 
-      const cleanShop = (currentShopName && !currentShopName.includes("미확인")) ? currentShopName.trim() : "";
-      const baseAddr = (currentShopAddress && !currentShopAddress.includes("미확인")) ? currentShopAddress.trim() : "";
-      
-      const refinedAddr = sanitizeAddressForMap(baseAddr);
-      const combinedTarget = `${cleanShop} ${refinedAddr}`.trim();
-      
-      if (!combinedTarget) return;
-      
-      openCompactPopup(`https://search.naver.com/search.naver?query=${encodeURIComponent(combinedTarget)}`);
-
-      const targetEl = document.getElementById('part1MatchBasis');
-      if (targetEl) {
-        targetEl.innerText = "조회 중...";
+    function openAddressSearch() { 
+      if (!currentShopAddress || currentShopAddress.includes("미확인")) {
+        return;
       }
-
-      try {
-        const res = await fetch("/api/search-category", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: combinedTarget })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.category && data.category !== '미상') {
-            if (targetEl) targetEl.innerText = data.category;
-          } else {
-            if (targetEl) targetEl.innerText = "미상";
-          }
-        } else {
-          if (targetEl) targetEl.innerText = "미상";
-        }
-      } catch (e) {
-        if (targetEl) targetEl.innerText = "미상";
-      }
+      openCompactPopup(`https://search.naver.com/search.naver?query=${encodeURIComponent(currentShopAddress)}`);
     }
     
     function resetSystem() { 
