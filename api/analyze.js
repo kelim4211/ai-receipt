@@ -18,7 +18,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    // 수정됨: gemini-3.5-flash 모델 적용
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
@@ -32,7 +33,7 @@ ETC: 항목명 | 금액
 - SHOP 라인은 반드시 'SHOP:'으로 시작하고 각 항목을 파이프(|)로 구분하십시오.
 - [업종및가게성격]은 상호와 품목을 분석해 '업종 (주력 판매 제품군 및 성격)' 형태의 짧은 한 문장으로 반드시 작성하십시오.
 - 영수증에 인쇄된 일자, 사업자번호, 전화번호, 주소를 정확히 추출하되, 인쇄되어 있지 않거나 보이지 않으면 "미확인"으로 적으십시오. 절대 날짜를 임의로 지어내지 마십시오.
-- 코스트코 등 2줄 영수증은 상품명과 아랫줄 금액 정보를 하나의 ITEM 라인으로 결합하여 출력하십시오. 모든 구매 품목을 생략 없이 빠짐없이 출력하십시오.`;
+- 코스트코 등 2줄 영수증은 상품명과 아랫줄 금액 정보를 하나의 ITEM 라인으로 결합하여 출력하십시오. 모든 구매 품목을 생략 없이 빠짐없이 출력하십시오.
 
 [금액 추출 핵심 규칙 - 필수 준수]
 - 품목 라인에 숫자가 여러 개 있든(단가/수량/금액), 단가나 수량 중 일부 정보가 누락되어 있든 무관하게, 항상 "해당 품목 라인의 가장 오른쪽에 인쇄된 최종 금액(단가x수량 합산액)"을 [단가또는총액]과 [최종금액]에 기재할 것.
@@ -133,16 +134,15 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          // AI가 보낸 값 중 가장 우측의 최종 합산 금액을 타겟 금액으로 확정
           const targetPrice = cleanNum(parts[4] || parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
 
           resultData.products.push({
             productOcr: parts[0],
             productAi: parts[1] || parts[0],
-            totalPrice: targetPrice, // '단가*수량' 칸에 최종 곱한 값(1,960) 주입 -> 품목 정가 합계 정확히 일치
+            totalPrice: targetPrice,
             discount: rawDiscount,
-            finalPrice: targetPrice  // 최종 금액 칸에도 1,960 주입
+            finalPrice: targetPrice
           });
         }
       } else if (trimmed.startsWith('ETC:')) {
