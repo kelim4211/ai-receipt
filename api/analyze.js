@@ -1,22 +1,12 @@
 export const maxDuration = 30;
 
-// 친구들에게 공유할 단일 공통 등록 키 (원하실 경우 자유롭게 변경 가능)
-const APP_SECRET_KEY = process.env.APP_SECRET_KEY || 'receipt_team_pass_2026';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: '잘못된 접근입니다.' });
   }
 
   try {
-    const { image, clientKey } = req.body;
-
-    // 기기 내에 보관된 열쇠 검증 (복사 링크로 접속한 제3자는 이 키가 없어 차단됨)
-    if (!clientKey || clientKey !== APP_SECRET_KEY) {
-      return res.status(403).json({ 
-        error: '접근 권한이 없는 기기입니다. 최초 발송된 공식 링크로 등록된 기기에서만 실행 가능합니다.' 
-      });
-    }
+    const { image } = req.body;
 
     if (!image) {
       return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
