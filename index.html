@@ -520,18 +520,26 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    // 지도 검색 버튼 클릭 시 상호명 + 도로명주소 처음 부분(시/군/구 및 읍/면/동/도로명까지만) 조합으로 타겟팅 최적화 후 네이버 지도 팝업 오픈
+    // 지도 검색 버튼 클릭 시 상호명 + 도로명 주소 범위(~로, ~길)까지만 조합하여 팝업창 오픈
     function openMapSearch() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
       }
 
-      // 주소에서 공백 기준 상위 세 단어(예: 서울시 강남구 테헤란로)까지만 추출하여 정밀 검색어 구성
       let addressParts = currentShopAddress.trim().split(/\s+/);
-      let shortAddress = addressParts.slice(0, 3).join(" ");
+      let cutoffIndex = -1;
+      for (let i = 0; i < addressParts.length; i++) {
+        if (addressParts[i].endsWith('로') || addressParts[i].endsWith('길')) {
+          cutoffIndex = i;
+          break;
+        }
+      }
+
+      let shortAddress = cutoffIndex !== -1 
+        ? addressParts.slice(0, cutoffIndex + 1).join(" ") 
+        : addressParts.slice(0, 3).join(" ");
 
       let cleanShopName = (currentShopName && currentShopName !== "상호명 미확인") ? currentShopName.trim() : "";
-      
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
 
       let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
