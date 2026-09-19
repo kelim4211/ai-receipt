@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>지능형 AI 소비지출 판독앱</title>
+  <title>지능형 AI 지출내역 판독앱</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
@@ -347,7 +347,7 @@
       if (previewCont) previewCont.classList.add('hidden');
 
       const scanBadge = document.getElementById('scanStatusBadge');
-      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (효율 최적화 완료)`;
+      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (분석 대기)`;
 
       cancelCrop();
     }
