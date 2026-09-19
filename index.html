@@ -158,7 +158,6 @@
             </div>
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-start gap-2">
-                <!-- 변경됨: 복원 프로세스 -> 업종업태 -->
                 <span class="text-slate-500 font-bold w-24 shrink-0">업종업태:</span>
                 <span id="part1MatchBasis" class="font-bold text-slate-700 text-[10px] flex-1">-</span>
               </div>
@@ -412,7 +411,8 @@
       setTxt('part1Date', data.date || '-');
       setTxt('part1ShopOcr', data.shopOcr || '-');
       setTxt('part1ShopName', currentShopName);
-      setTxt('part1MatchBasis', data.shopMatchBasis || '-');
+      // 수정된 부분: 백엔드의 data.shopIndustry 값을 업종업태 라벨(part1MatchBasis)에 매핑
+      setTxt('part1MatchBasis', data.shopIndustry || data.shopMatchBasis || '-');
       setTxt('part1BizNo', data.bizNo || '미확인');
       setTxt('part1Phone', data.phone || '미확인');
       
