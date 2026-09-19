@@ -18,25 +18,25 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
-ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
+ITEM: 원본제품명 | 복원제품명 | 정가(단가수량곱한값) | 할인금액 | 최종결제금액
 ETC: 항목명 | 금액
 
 [필수 작성 규칙]
 - SHOP 라인은 반드시 'SHOP:'으로 시작하고 각 항목을 파이프(|)로 구분하십시오.
 - [업종및가게성격]은 상호와 품목을 분석해 '업종 (주력 판매 제품군 및 성격)' 형태의 짧은 한 문장으로 반드시 작성하십시오.
 - 영수증에 인쇄된 일자, 사업자번호, 전화번호, 주소를 정확히 추출하되, 인쇄되어 있지 않거나 보이지 않으면 "미확인"으로 적으십시오. 절대 날짜를 임의로 지어내지 마십시오.
-- 코스트코 등 2줄 영수증은 상품명과 아랫줄 금액 정보를 하나의 ITEM 라인으로 결합하여 출력하십시오. 모든 구매 품목을 생략 없이 빠짐없이 출력하십시오.
+- 코스트코 등 CPN(쿠폰 할인)이 아래줄에 따로 인쇄된 경우, 해당 품목의 '정가(할인 전 금액)'와 '할인액', 그리고 '최종결제금액(정가-할인액)'을 각각 구분하여 정확히 분리 기재하십시오.
 
 [금액 추출 핵심 규칙 - 필수 준수]
-- 품목 라인에 숫자가 여러 개 있든(단가/수량/금액), 단가나 수량 중 일부 정보가 누락되어 있든 무관하게, 항상 "해당 품목 라인의 가장 오른쪽 금액(단가와 수량을 곱한 값)"을 기재할 것.
-  * 단가와 수량 정보가 일부만 있거나 복잡하게 적혀 있어도, 무조건 해당 행의 맨 우측 최종 계산된 금액을 추출해야 합니다.
+- ITEM 라인의 세 번째 값은 [정가(할인 전 단가*수량 금액)], 네 번째 값은 [할인액], 다섯 번째 값은 [최종결제금액]을 기재할 것.
+  * 예: 비비고수제깻잎의 경우 정가는 16490, 할인액은 6500, 최종금액은 9990으로 각각 분리하여 추출해야 합니다.
 
 [복원제품명 작성 규칙]
 - 영수증 인쇄 글자 수 한계로 끊긴 단어는 온전한 완제품 명칭으로 자연스럽게 복원하십시오.
@@ -48,8 +48,8 @@ ETC: 항목명 | 금액
 
 [출력 예시]
 SHOP: 이마트 안양점 | 대형마트 | 2026-03-29 | 123-45-67890 | 031-000-0000 | 경기도 안양시
-ITEM: 14 . 롯데 수박바젤리 56 | 롯데 수박바젤리 | 1960 | 0 | 1960
-ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈취제 | 3000 | 0 | 3000`;
+ITEM: 비비고수제깻잎 | 비비고 수제 깻잎만두 | 16490 | 6500 | 9990
+ITEM: 프레지던트무가염버터 | 프레지던트 무가염버터 | 29990 | 6000 | 23990`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -67,7 +67,7 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목 금액은 단가나 수량이 아닌 맨 우측 최종 합산 금액(단가와 수량을 곱한 값)을 가져오고, 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목별로 정가, 할인액, 최종결제금액을 각각 분리하여 정확히 기재하고, 부가세/합계 라인은 제외하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -132,16 +132,16 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          // 가장 오른쪽에 위치한 최종 금액 값(단가*수량 곱한 값)을 우선적으로 추출
-          const targetPrice = cleanNum(parts[4] || parts[2], '0');
+          const rawOriginal = cleanNum(parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
+          const rawFinal = cleanNum(parts[4] || parts[2], '0');
 
           resultData.products.push({
             productOcr: parts[0],
             productAi: parts[1] || parts[0],
-            totalPrice: targetPrice,
-            discount: rawDiscount,
-            finalPrice: targetPrice
+            totalPrice: rawOriginal, // 단가*수량 (정가) 영역에 16490 매핑
+            discount: rawDiscount,   // 할인액 영역에 6500 매핑
+            finalPrice: rawFinal     // 금액 영역에 9990 매핑
           });
         }
       } else if (trimmed.startsWith('ETC:')) {
