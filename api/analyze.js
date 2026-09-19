@@ -18,7 +18,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    // 요청하신 대로 모델명을 무조건 3.6으로 고정 적용
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
@@ -29,10 +28,10 @@ SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번�
 ITEM: 원본제품명 | 복원제품명 | 정가(단가수량금액) | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 
-[필수 작성 규칙]
-- SHOP 라인은 반드시 'SHOP:'으로 시작하고 각 항목을 파이프(|)로 구분하십시오.
-- [업종및가게성격]은 상호와 품목을 분석해 '업종 (주력 판매 제품군 및 성격)' 형태의 짧은 한 문장으로 반드시 작성하십시오.
-- 코스트코 등 CPN(할인) 행이 제품 바로 아랫줄에 나오는 경우, 이를 독립된 품목으로 취급하지 말고 제품 행과 연계하여 정확히 추출하십시오.
+[금액 추출 핵심 철칙 - 절대 준수]
+- 품목 행의 세 번째 값인 [정가]에는 무조건 해당 제품 행의 가장 오른쪽에 인쇄된 원래 가격(예: 비비고 수제 깻잎만두의 경우 절대 9,990이 아닌 원래 정가인 16490)을 정확히 기재할 것.
+- 네 번째 값은 [할인액] (예: 6500), 다섯 번째 값은 최종 결제 금액(예: 9990)을 기재할 것. 
+- 단가 자리에 이미 할인이 적용된 최종 금액을 넣는 오류를 절대 범하지 마십시오.
 
 [정산 및 요약(ETC) 금지 규칙]
 - '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
@@ -59,7 +58,7 @@ ITEM: 프레지던트무가염버터 | 프레지던트 무가염버터 | 29990 |
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 아랫줄에 나오는 CPN 할인가 정보는 바로 위 제품의 할인액으로 매칭되도록 구성하시오." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목의 정가(단가*수량) 칸에는 절대 할인가가 아닌 원래 오른쪽에 적힌 정가를 기재하고, 아랫줄 CPN 할인은 바로 위 제품의 할인액으로 정확히 매칭하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -142,8 +141,9 @@ ITEM: 프레지던트무가염버터 | 프레지던트 무가염버터 | 29990 |
           let discNum = Number(rawDiscount);
           let finalNum = Number(rawFinal);
 
+          // [핵심 보정 로직] 정가와 최종금액이 같거나 잘못 들어왔는데 할인액이 있다면, 정가 = 최종금액 + 할인액으로 강제 복원
           if (discNum > 0 && origNum === finalNum) {
-            rawOriginal = String(origNum + discNum);
+            rawOriginal = String(finalNum + discNum);
           }
 
           resultData.products.push({
