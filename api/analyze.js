@@ -1,12 +1,22 @@
 export const maxDuration = 10;
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  const { query } = req.query;
-  if (!query || !query.trim()) {
+  let query = '';
+  if (req.method === 'GET') {
+    query = req.query?.query;
+  } else if (req.method === 'POST') {
+    query = req.body?.query;
+  }
+
+  if (!query || typeof query !== 'string' || !query.trim()) {
     return res.status(200).json({ category: '미상' });
   }
 
