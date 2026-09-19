@@ -29,8 +29,8 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 
 [영수증 금액 산출 핵심 규칙]
-- 영수증에서 품목 바로 아랫줄에 '-T'로 끝나는 행이 나오면, 이는 바로 윗줄 품목의 할인가격입니다.
-- 품목 행의 가장 오른쪽에 있는 가격이 단가*수량(할인 전 정가)에 해당하며, 아랫줄의 '-T' 금액이 할인액입니다. 이 구조를 정확히 반영하여 출력하십시오.
+- 품목 행의 가장 오른쪽에 있는 가격이 '단가*수량(정가)'에 해당합니다.
+- 아랫줄에 할인액이 나오면, 단가*수량(정가)에서 해당 할인액을 차감한 결과가 가장 오른쪽의 '최종 금액'이 됩니다. 이 구조를 정확히 반영하여 출력하십시오.
 
 [정산 및 요약(ETC) 금지 규칙]
 - '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
@@ -52,7 +52,7 @@ ETC: 항목명 | 금액
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 윗줄의 정가와 아랫줄의 -T 할인가 구조를 반영해 [출력 양식]에 맞춰 줄 단위로 추출하시오." },
+              { text: "영수증 이미지를 분석하여 윗줄의 가장 오른쪽 숫자를 단가*수량으로 잡고, 할인액을 차감한 금액을 최종 금액으로 설정하여 [출력 양식]에 맞춰 줄 단위로 추출하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -117,7 +117,7 @@ ETC: 항목명 | 금액
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          const basePrice = cleanNum(parts[4] || parts[2], '0');
+          const basePrice = cleanNum(parts[2], '0'); // 윗줄 가장 오른쪽 숫자 (단가*수량 / 정가)
           const rawDiscount = cleanNum(parts[3], '0');
 
           const newProd = {
@@ -125,13 +125,12 @@ ETC: 항목명 | 금액
             productAi: parts[1] || parts[0],
             totalPrice: basePrice,
             discount: rawDiscount,
-            finalPrice: basePrice
+            finalPrice: basePrice // 초기값은 정가로 설정 후 할인액 발생 시 차감
           };
 
           resultData.products.push(newProd);
         }
       } else if (trimmed.includes('-T') || trimmed.includes('CPN') || trimmed.toLowerCase().includes('cpn') || trimmed.includes('IRC') || trimmed.includes('할인')) {
-        // -T 할인가 행이 나오면, 방금 등록된 직전 제품(products 배열의 마지막 요소)을 무조건 타겟으로 지정
         const matchNums = trimmed.match(/\d[\d,.]*/g);
         if (matchNums && matchNums.length > 0 && resultData.products.length > 0) {
           const discountVal = Number(cleanNum(matchNums[matchNums.length - 1], '0'));
@@ -139,10 +138,10 @@ ETC: 항목명 | 금액
             const lastProduct = resultData.products[resultData.products.length - 1];
             lastProduct.discount = String(discountVal);
             
-            // 만약 단가*수량에 이미 최종금액이 들어와 있거나 정가 복원이 필요할 경우, 
-            // 단가*수량 = 현재 입력된 금액 + 할인액 공식으로 원래 정가(16,490 등)를 확실하게 산출
-            const currentVal = Number(lastProduct.totalPrice);
-            lastProduct.totalPrice = String(currentVal + discountVal);
+            // 핵심 원칙 적용: 단가*수량(정가)에서 할인액을 차감한 것이 최종 금액이 되도록 설정
+            const origPrice = Number(lastProduct.totalPrice);
+            const calculatedFinal = origPrice - discountVal;
+            lastProduct.finalPrice = String(calculatedFinal > 0 ? calculatedFinal : origPrice);
           }
         }
       } else if (trimmed.startsWith('ETC:')) {
@@ -156,6 +155,16 @@ ETC: 항목명 | 금액
         }
       }
     }
+
+    // 최종 유효성 검사: 할인액이 있는데 최종금액이 정가와 똑같이 남아있다면 차감 금액 재계산
+    resultData.products.forEach(p => {
+      const tPrice = Number(p.totalPrice);
+      const disc = Number(p.discount);
+      const fPrice = Number(p.finalPrice);
+      if (disc > 0 && tPrice === fPrice) {
+        p.finalPrice = String(tPrice - disc);
+      }
+    });
 
     return res.status(200).json(resultData);
 
