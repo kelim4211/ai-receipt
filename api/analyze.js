@@ -30,16 +30,13 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 
 [상호명 및 업종및가게성격 작성 규칙 - 필수 준수]
-- SHOP: 라인의 2번째 항목인 [업종및가게성격]은 영수증에 직접 적혀 있지 않더라도, 상호명과 구매 품목을 종합 분석하여 반드시 '기본 업종/업태 (주력 판매 제품군 및 가게 성격)' 형태의 짧은 한 문장으로 작성하십시오. 절대 빈칸이나 미확인으로 두지 마십시오.
-
-[사실 기반 원칙 - 절대 준수]
-- 영수증 이미지에 실제로 인쇄되어 눈으로 확인 가능한 정보만 추출하십시오.
-- 일자, 사업자번호, 전화번호, 주소 중 이미지에 보이지 않는 항목은 절대 임의로 날짜를 지어내거나 추측하지 말고 반드시 "미확인"으로 표기하십시오.
+- [업종및가게성격] 항목은 단어 하나로 끝내지 마십시오.
+- 상호명과 영수증 품목을 종합 분석하여, 기본 업종/업태와 함께 '주력 판매 제품군' 및 '가게의 구체적인 성격'을 한눈에 알 수 있도록 매끄러운 '짧은 한 문장'으로 작성하십시오.
 
 [코스트코 및 2줄 영수증 처리 특수 규칙 - 필수 준수]
 - 코스트코 영수증은 윗줄에 [제품명], 아랫줄에 [상품코드 수량x 단가 최종금액 T] 구조로 인쇄됩니다. 이 두 줄을 반드시 하나의 상품으로 결합하여 추출하십시오.
-- 금액 뒤에 붙은 과세 표시 'T'나 특수문자는 제거하고 순수 숫자 금액만 추출하십시오.
-- 바로 아래에 'CPN'으로 붙은 쿠폰 할인은 해당 제품의 할인금액에 반영하거나, 별도 제품이 아닌 경우 할인으로 계산하십시오.
+- 금액 뒤에 붙은 과세 표시 'T'나 특수문자는 제거하고 순수 숫자 금액만 추출하십시오. (예: 17,970 T ➔ 17970)
+- 바로 아래에 'CPN'으로 붙은 쿠폰 할인은 해당 제품의 할인금액에 반영하거나, 별도 제품이 아닌 경우 할인으로 계산하십시오. (예: 6,500-T ➔ 할인 6500)
 - 코스트코 매장인 경우 자체 PB 상품은 '커클랜드(Kirkland)'를 붙여 복원하십시오.
 
 [PB 상품 및 복원제품명 작성 규칙 - 필수 준수]
@@ -49,7 +46,7 @@ ETC: 항목명 | 금액
 [정산 및 요약(ETC) 금지 규칙 - 필수 준수]
 - 과세, 면세, 부가세, 세액, VAT 등 세금 및 정산 관련 항목은 분리하거나 출력하지 말고 분석에서 완전히 제외하십시오.
 - 판매합계, 합계, 총액, 받은금액, 거스름돈, 카드결제 등 단순 결제 합계 관련 항목 역시 일체 출력 금지.
-- 오직 통신사 할인, 포인트 사용 등 실질적인 할인/차감 항목만 ETC로 출력할 것.`;
+- 오직 통신사 할인, 포인트 사용 등 실질적인 할인/차감 항목만 ETC로 출력할 것.
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -62,12 +59,12 @@ ETC: 항목명 | 금액
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          max_output_tokens: 1500
+          max_output_tokens: 3000
         },
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 SHOP 정보와 ITEM 목록을 출력 양식에 맞게 추출하시오. 이미지에 없는 날짜나 번호는 반드시 '미확인'으로 출력하고, 2번째 항목인 [업종및가게성격]은 품목을 바탕으로 짧은 한 문장으로 작성하시오." },
+              { text: "영수증 이미지를 분석하여 모든 구매 품목을 빠짐없이 ITEM: 양식으로 추출하시오. 2줄 구조 영수증은 상품명과 아래 금액을 한 줄로 합쳐 처리하고, 과세/부가세 및 결제 합계 라인은 완전히 제외하시오. JSON 절대 금지." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -116,16 +113,10 @@ ETC: 항목명 | 금액
         resultData.shopName = parts[0] || '상호명 미확인';
         resultData.shopOcr = parts[0] || '';
         resultData.shopIndustry = parts[1] || '';
-        resultData.date = parts[2] || '미확인';
-        resultData.bizNo = parts[3] || '미확인';
-        resultData.phone = parts[4] || '미확인';
-        resultData.address = parts[5] || '미확인';
-
-        // 날짜 순서가 밀려 업종 칸에 들어갔을 경우 자동 보정
-        if (/\d{4}[-.]\d{2}[-.]\d{2}/.test(resultData.shopIndustry)) {
-          resultData.date = resultData.shopIndustry;
-          resultData.shopIndustry = '';
-        }
+        resultData.date = parts[2] || '';
+        resultData.bizNo = parts[3] || '';
+        resultData.phone = parts[4] || '';
+        resultData.address = parts[5] || '';
       } else if (/^ITEM\s*:/i.test(line)) {
         const parts = line.replace(/^ITEM\s*:/i, '').split('|').map(cleanStr);
         if (parts.length >= 2) {
@@ -151,17 +142,6 @@ ETC: 항목명 | 금액
             amount: cleanNum(parts[1], '0')
           });
         }
-      }
-    }
-
-    // 업종 정보가 비어있을 경우 품목 및 상호명 기반 자동 보정
-    if (!resultData.shopIndustry || resultData.shopIndustry === '미확인' || resultData.shopIndustry === '-') {
-      if (resultData.shopName.includes('코스트코')) {
-        resultData.shopIndustry = '대형마트 (식료품 및 대용량 잡화 중심의 창고형 할인매장)';
-      } else if (resultData.products.length > 0) {
-        resultData.shopIndustry = '소매/유통점 (식음료 및 생활필수품 판매)';
-      } else {
-        resultData.shopIndustry = '소매업 (소비재 및 잡화 매장)';
       }
     }
 
