@@ -1,4 +1,4 @@
-=<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -157,10 +157,6 @@
               <span id="part1ShopName" class="font-black text-brand-700 text-sm">-</span>
             </div>
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
-              <div class="flex items-start gap-2">
-                <span class="text-slate-500 font-bold w-24 shrink-0">업종업태:</span>
-                <span id="part1MatchBasis" class="font-bold text-slate-700 text-[10px] flex-1">-</span>
-              </div>
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-bold w-24 shrink-0">사업자번호:</span>
                 <span id="part1BizNo" class="font-bold text-slate-900 text-[10.5px] flex-1">미확인</span>
@@ -261,7 +257,7 @@
     }
 
     function clearAnalysisResidue() {
-      ['part1Date', 'part1ShopOcr', 'part1ShopName', 'part1MatchBasis'].forEach(id => {
+      ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerText = '-';
       });
@@ -413,9 +409,6 @@
       setTxt('part1Date', data.date || '-');
       setTxt('part1ShopOcr', data.shopOcr || '-');
       setTxt('part1ShopName', currentShopName);
-      
-      const resolvedIndustry = data.shopIndustry || data.shopMatchBasis || '';
-      setTxt('part1MatchBasis', resolvedIndustry ? resolvedIndustry : '업종 정보 미확인');
 
       setTxt('part1BizNo', data.bizNo || '미확인');
       setTxt('part1Phone', data.phone || '미확인');
@@ -526,7 +519,6 @@
         return;
       }
 
-      // 1. 주소에서 '~로' 또는 '~길'이 포함된 단어 위치까지만 추출
       let addressParts = currentShopAddress.trim().split(/\s+/);
       let cutoffIndex = -1;
       for (let i = 0; i < addressParts.length; i++) {
@@ -540,7 +532,6 @@
         ? addressParts.slice(0, cutoffIndex + 1).join(" ") 
         : addressParts.slice(0, 3).join(" ");
 
-      // 2. 상호명에서 (주), 유한회사 등 불필요한 법인 표기나 특수문자 제거
       let cleanShopName = "";
       if (currentShopName && currentShopName !== "상호명 미확인") {
         cleanShopName = currentShopName
@@ -549,7 +540,6 @@
           .trim();
       }
 
-      // 3. 상호명과 최적화된 도로명 주소(~로/~길까지) 결합
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
 
       let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
