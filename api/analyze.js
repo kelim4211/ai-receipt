@@ -18,8 +18,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    // 수정됨: gemini-3.5-flash 모델 적용
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
@@ -36,13 +35,12 @@ ETC: 항목명 | 금액
 - 코스트코 등 2줄 영수증은 상품명과 아랫줄 금액 정보를 하나의 ITEM 라인으로 결합하여 출력하십시오. 모든 구매 품목을 생략 없이 빠짐없이 출력하십시오.
 
 [금액 추출 핵심 규칙 - 필수 준수]
-- 품목 라인에 숫자가 여러 개 있든(단가/수량/금액), 단가나 수량 중 일부 정보가 누락되어 있든 무관하게, 항상 "해당 품목 라인의 가장 오른쪽에 인쇄된 최종 금액(단가x수량 합산액)"을 [단가또는총액]과 [최종금액]에 기재할 것.
-  * 단가 980, 수량 2, 금액 1,960인 경우 ➔ 낱개 단가 980이 아닌 가장 오른쪽인 1960을 추출할 것.
+- 품목 라인에 숫자가 여러 개 있든(단가/수량/금액), 단가나 수량 중 일부 정보가 누락되어 있든 무관하게, 항상 "해당 품목 라인의 가장 오른쪽에 인쇄된 최종 금액(단가와 수량을 곱한 값)"을 [단가또는총액]과 [최종금액]에 엄격하게 기재할 것.
+  * 단가와 수량 정보가 일부만 있거나 복잡하게 적혀 있어도, 무조건 해당 행의 맨 우측 최종 계산된 금액을 추출해야 합니다.
 
 [복원제품명 작성 규칙]
 - 영수증 인쇄 글자 수 한계로 끊긴 단어는 온전한 완제품 명칭으로 자연스럽게 복원하십시오.
 - 상품 고유 품번(숫자 6~7자리), 물리적 규격/중량(g, ml, cm 등), 포장 단위 및 낱개 수량, 특수기호(*, [], () 등)는 복원 제품명에서 제거하십시오.
-  (예: '14 . 롯데 수박바젤리 56' ➔ '롯데 수박바젤리')
 
 [정산 및 요약(ETC) 금지 규칙]
 - '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
@@ -69,7 +67,7 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목 금액은 단가나 수량이 아닌 맨 우측 최종 합산 금액을 가져오고, 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
+              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 품목 금액은 단가나 수량이 아닌 맨 우측 최종 합산 금액(단가와 수량을 곱한 값)을 가져오고, 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -99,10 +97,10 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
       shopOcr: '',
       shopName: '',
       shopIndustry: '',
-      date: '',
-      bizNo: '',
-      phone: '',
-      address: '',
+      date: '미확인',
+      bizNo: '미확인',
+      phone: '미확인',
+      address: '미확인',
       overallElements: [],
       products: []
     };
@@ -127,13 +125,14 @@ ITEM: 샤프란 꽃담초 섬유탈 [ 1000830 ] | 샤프란 꽃담초 섬유탈�
         resultData.shopName = parts[0] || '상호명 미확인';
         resultData.shopOcr = parts[0] || '';
         resultData.shopIndustry = parts[1] || '';
-        resultData.date = parts[2] || '';
-        resultData.bizNo = parts[3] || '';
-        resultData.phone = parts[4] || '';
-        resultData.address = parts[5] || '';
+        resultData.date = parts[2] || '미확인';
+        resultData.bizNo = parts[3] || '미확인';
+        resultData.phone = parts[4] || '미확인';
+        resultData.address = parts[5] || '미확인';
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
+          // 가장 오른쪽에 위치한 최종 금액 값(단가*수량 곱한 값)을 우선적으로 추출
           const targetPrice = cleanNum(parts[4] || parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
 
