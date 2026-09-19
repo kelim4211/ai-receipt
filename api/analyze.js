@@ -19,8 +19,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    // 모델명을 gemini-3.5-flash 로 지정
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
@@ -30,25 +29,21 @@ SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번�
 ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 
-[상호명 및 업종및가게성격 작성 규칙 - 필수 준수]
-- [업종및가게성격] 항목은 단어 하나로 끝내지 마십시오.
-- 상호명과 영수증 품목을 종합 분석하여, 기본 업종/업태와 함께 '주력 판매 제품군' 및 '가게의 구체적인 성격'을 한눈에 알 수 있도록 매끄러운 '짧은 한 문장'으로 작성하십시오.
+[코스트코 및 2줄 영수증 처리 특수 규칙 - 필수 준수]
+- 코스트코 영수증은 윗줄에 [제품명], 아랫줄에 [상품코드 수량x 단가 최종금액 T] 구조로 인쇄됩니다. 이 두 줄을 반드시 하나의 상품으로 결합하여 추출하십시오.
+- 금액 뒤에 붙은 과세 표시 'T'나 특수문자는 제거하고 순수 숫자 금액만 추출하십시오. (예: 17,970 T ➔ 17970)
+- 바로 아래에 'CPN'으로 붙은 쿠폰 할인은 해당 제품의 할인금액에 반영하거나, 별도 제품이 아닌 경우 할인으로 계산하십시오. (예: 6,500-T ➔ 할인 6500)
+- 코스트코 매장인 경우 자체 PB 상품은 '커클랜드(Kirkland)'를 붙여 복원하십시오.
 
-[금액 추출 핵심 규칙 - 필수 준수]
-- 영수증 품목 표의 열(Column) 구성에 [단가], [수량], [금액] 등이 나뉘어 있는 경우:
-  * 낱개 '단가'나 '수량' 숫자는 절대 가져오지 마십시오.
-  * 오직 해당 라인의 맨 오른쪽 끝에 인쇄된 "단가x수량이 이미 계산된 최종 합산 금액(Line Total)"만을 [단가또는총액]과 [최종금액]에 기재하십시오.
-  * 예: [단가 980 | 수량 2 | 금액 1,960] ➔ 980이나 2는 버리고 무조건 1960만 추출할 것.
-
-[PB 상품 및 복원제품명 작성 규칙 - 필수 준수]
-- 상호명(구매처)이 대형마트, 편의점, 다이소 등인 경우, 해당 유통사의 전용 PB 상품(노브랜드, 피코크, 홈플러스 시그니처, 요리하다, 오늘좋은, 유어스, 헤이루, 득템, 다이소 등)은 검색 정확도를 위해 복원 제품명 맨 앞에 'PB 브랜드명' 또는 '유통사명'을 반드시 포함하십시오.
-  * 예: '순수수제비 500g' (이마트) ➔ '노브랜드 순수수제비'
-  * 예: '물구멍방충망' (다이소) ➔ '다이소 물구멍방충망'
-- 일반 제조사(NB) 제품은 기존 브랜드명을 유지하고, 규격/중량(g, ml, cm), 품번(6~7자리), 특수기호는 제거하십시오.
-
-[정산 및 요약(ETC) 금지 규칙]
-- 과세, 부가세, 세액, VAT, 판매합계, 합계, 총액, 받은금액, 거스름돈, 카드결제 등 단순 결제 합계 관련 항목은 일체 출력 금지.
-- 오직 통신사 할인, 포인트 사용 등 실질적인 할인/차감 항목만 ETC로 출력할 것.`;
+[출력 예시]
+SHOP: (주)코스트코 코리아 광명점 | 회원제 대형 창고형 할인매장 (식료품, 대용량 가공식품 및 수입잡화 전문 유통점) | 2026-03-29 | 107-81-63829 | 1899-9900 | 경기 광명시 일직로 40
+ITEM: 프라이드치킨 | 프라이드치킨 | 17970 | 0 | 17970
+ITEM: 비비고수제깻잎 | 비비고 수제 깻잎만두 | 16490 | 6500 | 9990
+ITEM: 프레지덤무가염 | 프레지던트 무가염버터 | 29990 | 6000 | 23990
+ITEM: HIMUNE MILKSHAKE | 하이뮨 밀크쉐이크 | 33490 | 0 | 33490
+ITEM: 바삭바삭야채부각 | 바삭바삭 야채부각 | 13990 | 3000 | 10990
+ITEM: 콜롬비아그라운드 | 커클랜드 콜롬비아 분쇄원두커피 | 37990 | 0 | 37990
+ITEM: CENTRUM GUMMIES | 센트룸 구미 비타민 | 29990 | 0 | 29990`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -61,12 +56,12 @@ ETC: 항목명 | 금액
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          max_output_tokens: 2000
+          max_output_tokens: 3000
         },
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 분석하여 [출력 양식]에 맞춰 줄 단위로 추출하시오. 업종은 주력제품과 성격을 담은 짧은 한 문장으로 작성하고, 품목 금액은 맨 우측 최종 합산 금액을 가져오시오. PB 상품은 브랜드명을 포함하고 부가세/합계 라인은 제외하시오. JSON 절대 금지." },
+              { text: "영수증 이미지를 분석하여 모든 구매 품목을 빠짐없이 ITEM: 양식으로 추출하시오. 2줄 구조 영수증은 상품명과 아래 금액을 한 줄로 합쳐 처리하시오. JSON 절대 금지." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -100,18 +95,18 @@ ETC: 항목명 | 금액
     const cleanStr = (str) => (str || '').trim();
     const cleanNum = (str, fallback = '0') => {
       if (!str) return fallback;
-      return str.replace(/,/g, '').trim() || fallback;
+      const digits = str.replace(/[^0-9-]/g, '');
+      return digits || fallback;
     };
 
-    const blockedTermsRegex = /(과세|면세|부가세|세액|vat|판매\s*합계|합계|총액|받은\s*금액|거스름\s*돈|결제|카드)/i;
     const lines = rawText.split('\n');
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
 
-      if (trimmed.startsWith('SHOP:')) {
-        const parts = trimmed.substring(5).split('|').map(cleanStr);
+      if (/^SHOP\s*:/i.test(line)) {
+        const parts = line.replace(/^SHOP\s*:/i, '').split('|').map(cleanStr);
         resultData.shopName = parts[0] || '상호명 미확인';
         resultData.shopOcr = parts[0] || '';
         resultData.shopIndustry = parts[1] || '';
@@ -119,24 +114,28 @@ ETC: 항목명 | 금액
         resultData.bizNo = parts[3] || '';
         resultData.phone = parts[4] || '';
         resultData.address = parts[5] || '';
-      } else if (trimmed.startsWith('ITEM:')) {
-        const parts = trimmed.substring(5).split('|').map(cleanStr);
-        if (parts[0]) {
-          const targetPrice = cleanNum(parts[4] || parts[2], '0');
+      } else if (/^ITEM\s*:/i.test(line)) {
+        const parts = line.replace(/^ITEM\s*:/i, '').split('|').map(cleanStr);
+        if (parts.length >= 2) {
+          const productOcr = parts[0];
+          const productAi = parts[1] || productOcr;
+          const origPrice = cleanNum(parts[2] || '0');
+          const discount = cleanNum(parts[3] || '0');
+          const finalPrice = cleanNum(parts[4] || origPrice);
+
           resultData.products.push({
-            productOcr: parts[0],
-            productAi: parts[1] || parts[0],
-            totalPrice: targetPrice,
-            discount: cleanNum(parts[3], '0'),
-            finalPrice: targetPrice
+            productOcr: productOcr,
+            productAi: productAi,
+            totalPrice: origPrice,
+            discount: discount,
+            finalPrice: finalPrice
           });
         }
-      } else if (trimmed.startsWith('ETC:')) {
-        const parts = trimmed.substring(4).split('|').map(cleanStr);
-        const name = parts[0] || '';
-        if (name && !blockedTermsRegex.test(name)) {
+      } else if (/^ETC\s*:/i.test(line)) {
+        const parts = line.replace(/^ETC\s*:/i, '').split('|').map(cleanStr);
+        if (parts[0]) {
           resultData.overallElements.push({
-            name: name,
+            name: parts[0],
             amount: cleanNum(parts[1], '0')
           });
         }
