@@ -412,7 +412,7 @@
       setTxt('part1ShopOcr', data.shopOcr || '-');
       setTxt('part1ShopName', currentShopName);
       // 수정된 부분: 백엔드의 data.shopIndustry 값을 업종업태 라벨(part1MatchBasis)에 매핑
-      setTxt('part1MatchBasis', data.shopIndustry || data.shopMatchBasis || '-');
+      setTxt('part1MatchBasis', data.shopIndustry);
       setTxt('part1BizNo', data.bizNo || '미확인');
       setTxt('part1Phone', data.phone || '미확인');
       
