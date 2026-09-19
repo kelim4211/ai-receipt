@@ -1,53 +1,6 @@
 export const maxDuration = 30;
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // 1. 카테고리 검색 요청 처리 (GET 또는 POST로 query가 들어온 경우)
-  let query = '';
-  if (req.method === 'GET' && req.query?.query) {
-    query = req.query.query;
-  } else if (req.method === 'POST' && req.body?.query && !req.body?.image) {
-    query = req.body.query;
-  }
-
-  if (query) {
-    if (!query.trim()) {
-      return res.status(200).json({ category: '미상' });
-    }
-    try {
-      const searchUrl = `https://search.daum.net/search?w=tot&q=${encodeURIComponent(query.trim())}`;
-      const response = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      });
-
-      if (!response.ok) {
-        return res.status(200).json({ category: '미상' });
-      }
-
-      const html = await response.text();
-      const match = html.match(/class="(?:txt_category|category|txt_sub)"[^>]*>([^<]+)<\//i) ||
-                    html.match(/data-category="([^"]+)"/i);
-
-      if (match && match[1] && match[1].trim()) {
-        return res.status(200).json({ category: match[1].trim() });
-      }
-
-      return res.status(200).json({ category: '미상' });
-    } catch (err) {
-      return res.status(200).json({ category: '미상' });
-    }
-  }
-
-  // 2. 기존 영수증 분석 요청 처리 (POST로 image가 들어온 경우)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: '잘못된 접근입니다.' });
   }
@@ -74,9 +27,6 @@ export default async function handler(req, res) {
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
 ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
-
-[상호명 및 업종업태 판독 규칙]
-- SHOP 라인의 '업종및가게성격'은 상호명과 매장주소를 바탕으로 매장 특성을 파악하여 작성하십시오.
 
 [유통사 및 영수증 체계 지능형 판독 규칙]
 - 코스트코, 이마트, 롯데마트, 홈플러스 등 다양한 유통사별 영수증 형태와 할인 체계를 지능적으로 판단하여 분석하십시오.
