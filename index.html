@@ -169,7 +169,7 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
-                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">주소 검색</button>
+                  <button type="button" id="copyAddressBtn" onclick="openAddressSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs">상호 검색</button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
@@ -519,10 +519,14 @@
     }
 
     function openAddressSearch() { 
-      if (!currentShopAddress || currentShopAddress.includes("미확인")) {
+      const cleanShop = (currentShopName && !currentShopName.includes("미확인")) ? currentShopName.trim() : "";
+      const cleanAddr = (currentShopAddress && !currentShopAddress.includes("미확인")) ? currentShopAddress.trim() : "";
+      
+      const combinedTarget = `${cleanShop} ${cleanAddr}`.trim();
+      if (!combinedTarget) {
         return;
       }
-      openCompactPopup(`https://search.naver.com/search.naver?query=${encodeURIComponent(currentShopAddress)}`);
+      openCompactPopup(`https://search.naver.com/search.naver?query=${encodeURIComponent(combinedTarget)}`);
     }
     
     function resetSystem() { 
