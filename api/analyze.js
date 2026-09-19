@@ -8,7 +8,6 @@ export default async function handler(req, res) {
   try {
     const { image } = req.body;
 
-    // 1. 이미지 유효성 검사
     if (!image) {
       return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
     }
@@ -20,9 +19,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 모델명을 gemini-3.5-flash 로 지정
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
-    // 2. PB 결합, 우측 최종금액, 상세 업종 한문장 프롬프트
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
