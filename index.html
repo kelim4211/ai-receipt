@@ -330,13 +330,13 @@
       if (!cropperInstance) return;
 
       const croppedCanvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 1600,
+        maxHeight: 1600,
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.75);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -347,7 +347,7 @@
       if (previewCont) previewCont.classList.add('hidden');
 
       const scanBadge = document.getElementById('scanStatusBadge');
-      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (분석 대기)`;
+      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (효율 최적화 완료)`;
 
       cancelCrop();
     }
@@ -412,7 +412,6 @@
       setTxt('part1ShopOcr', data.shopOcr || '-');
       setTxt('part1ShopName', currentShopName);
       
-      // 업종업태 필드 확실하게 매핑
       const resolvedIndustry = data.shopIndustry || data.shopMatchBasis || '';
       setTxt('part1MatchBasis', resolvedIndustry ? resolvedIndustry : '업종 정보 미확인');
 
@@ -440,13 +439,13 @@
       const fragment = document.createDocumentFragment();
 
       products.forEach((item, index) => {
-        let numOrig = Number(String(item.totalPrice || item.finalPrice || 0).replace(/[^0-9]/g, ''));
+        let originalPrice = Number(String(item.totalPrice || item.finalPrice || 0).replace(/[^0-9]/g, ''));
         let numDisc = Number(String(item.discount || 0).replace(/[^0-9]/g, ''));
-        let calculatedItemAmount = Number(String(item.finalPrice || numOrig).replace(/[^0-9]/g, ''));
+        let finalPrice = Number(String(item.finalPrice || (originalPrice - numDisc)).replace(/[^0-9]/g, ''));
         
-        totalOriginalSum += numOrig;
+        totalOriginalSum += originalPrice;
         totalProductDiscountSum += numDisc;
-        totalCalculatedProductsAmount += calculatedItemAmount;
+        totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
         const searchURL = getSmartSearchURL(resolvedQuery);
@@ -469,9 +468,9 @@
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
-            <div><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${calculatedItemAmount.toLocaleString()}</span></div>
+            <div><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${originalPrice.toLocaleString()}</span></div>
             <div class="border-x"><span class="text-[9px] text-slate-500 block">할인액</span><span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span></div>
-            <div><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${calculatedItemAmount.toLocaleString()}</span></div>
+            <div><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${finalPrice.toLocaleString()}</span></div>
           </div>
         `;
 
