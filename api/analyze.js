@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
-오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오. 영수증에 있는 모든 구매 품목을 단 하나도 생략하거나 요약하지 말고 끝까지 전부 ITEM: 형식으로 출력하십시오.
+오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
@@ -30,11 +30,11 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 
 [사실 기반 원칙 - 절대 준수]
-- 영수증 이미지에 실제로 인쇄되어 눈으로 명확히 확인 가능한 정보만 사실대로 추출하십시오.
-- 일자, 사업자번호, 전화번호, 주소 항목 중 이미지에서 잘려 있거나 보이지 않는 정보는 절대로 가상의 값을 지어내지 말고 반드시 "미확인"으로 표기하십시오.
+- 영수증 이미지에 실제로 인쇄되어 눈으로 확인 가능한 정보만 추출하십시오.
+- 일자, 사업자번호, 전화번호, 주소 중 이미지에 보이지 않는 항목은 절대 임의로 날짜를 지어내거나 추측하지 말고 반드시 "미확인"으로 표기하십시오.
 
 [상호명 및 업종및가게성격 작성 규칙 - 필수 준수]
-- SHOP: 라인의 2번째 항목인 [업종및가게성격]은 영수증에 별도 인쇄가 없더라도, 상호명과 구매 품목을 분석하여 반드시 '기본 업종/업태 (주력 판매 제품군 및 가게 성격)' 형태의 짧은 한 문장으로 작성하십시오. 빈칸이나 미확인으로 두지 마십시오.
+- SHOP: 라인의 2번째 항목인 [업종및가게성격]은 영수증에 직접 적혀 있지 않더라도, 상호명과 구매 품목을 종합 분석하여 반드시 '기본 업종/업태 (주력 판매 제품군 및 가게 성격)' 형태의 짧은 한 문장으로 작성하십시오. 절대 빈칸이나 미확인으로 두지 마십시오.
 
 [코스트코 및 2줄 영수증 처리 특수 규칙 - 필수 준수]
 - 코스트코 영수증은 윗줄에 [제품명], 아랫줄에 [상품코드 수량x 단가 최종금액 T] 구조로 인쇄됩니다. 이 두 줄을 반드시 하나의 상품으로 결합하여 추출하십시오.
@@ -62,12 +62,12 @@ ETC: 항목명 | 금액
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          max_output_tokens: 3000 // 품목 누락 및 끊김 방지를 위해 3000으로 원상 복구
+          max_output_tokens: 1500
         },
         contents: [
           {
             parts: [
-              { text: "영수증 이미지를 정밀 판독하여 SHOP 정보와 함께 모든 구매 품목을 빠짐없이 ITEM: 형식으로 끝까지 출력하십시오. 확인되지 않는 일자나 번호는 반드시 '미확인'으로 출력하고, 2번째 항목인 [업종및가게성격]은 한 문장으로 작성하십시오." },
+              { text: "영수증 이미지를 분석하여 SHOP 정보와 ITEM 목록을 출력 양식에 맞게 추출하시오. 이미지에 없는 날짜나 번호는 반드시 '미확인'으로 출력하고, 2번째 항목인 [업종및가게성격]은 품목을 바탕으로 짧은 한 문장으로 작성하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -121,6 +121,7 @@ ETC: 항목명 | 금액
         resultData.phone = parts[4] || '미확인';
         resultData.address = parts[5] || '미확인';
 
+        // 날짜 순서가 밀려 업종 칸에 들어갔을 경우 자동 보정
         if (/\d{4}[-.]\d{2}[-.]\d{2}/.test(resultData.shopIndustry)) {
           resultData.date = resultData.shopIndustry;
           resultData.shopIndustry = '';
@@ -153,6 +154,7 @@ ETC: 항목명 | 금액
       }
     }
 
+    // 업종 정보가 비어있을 경우 품목 및 상호명 기반 자동 보정
     if (!resultData.shopIndustry || resultData.shopIndustry === '미확인' || resultData.shopIndustry === '-') {
       if (resultData.shopName.includes('코스트코')) {
         resultData.shopIndustry = '대형마트 (식료품 및 대용량 잡화 중심의 창고형 할인매장)';
