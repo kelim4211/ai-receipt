@@ -138,6 +138,7 @@
     <h1>지능형 AI 소비지출 판독기</h1>
   </header>
 
+  <!-- 영수증 업로드 영역 -->
   <div class="card">
     <div class="upload-box" onclick="document.getElementById('receiptInput').click();">
       <span>📷 영수증 촬영 또는 사진 선택</span>
@@ -147,6 +148,7 @@
     <button id="submitBtn" class="btn" style="margin-top: 12px;" onclick="uploadReceipt()" disabled>영수증 분석 실행</button>
   </div>
 
+  <!-- 매장 분석 결과 -->
   <div id="shopCard" class="card" style="display:none;">
     <div class="info-group">
       <span class="info-label">상호명:</span>
@@ -167,6 +169,7 @@
     <div id="shopIndustry" class="industry-box"></div>
   </div>
 
+  <!-- 구매 품목 분석 결과 -->
   <div id="itemsCard" class="card" style="display:none;">
     <h2 style="font-size: 16px; margin-bottom: 8px;">구매 품목 목록</h2>
     <table>
@@ -184,15 +187,7 @@
 <script>
   let base64Data = '';
 
-  // 1. 링크로 최초 접속 시 열쇠 저장 후 주소창 파라미터(?join=...) 즉시 삭제
-  const urlParams = new URLSearchParams(window.location.search);
-  const joinKey = urlParams.get('join');
-
-  if (joinKey) {
-    localStorage.setItem('my_device_secret', joinKey.trim());
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
+  // 고용량 사진 전송 지연 방지용 브라우저 자동 압축 함수
   function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -224,6 +219,7 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
+        // JPEG 80% 압축으로 300KB 내외 경량화
         base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
         const preview = document.getElementById('preview');
@@ -236,14 +232,9 @@
     reader.readAsDataURL(file);
   }
 
+  // 백엔드 영수증 분석 API 호출
   async function uploadReceipt() {
     if (!base64Data) return;
-
-    const clientKey = localStorage.getItem('my_device_secret');
-    if (!clientKey) {
-      alert('접근 권한이 없는 기기입니다. 최초 발송된 공식 링크로 등록된 기기에서만 실행 가능합니다.');
-      return;
-    }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
@@ -253,10 +244,7 @@
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          image: base64Data,
-          clientKey: clientKey
-        })
+        body: JSON.stringify({ image: base64Data })
       });
 
       const data = await res.json();
@@ -265,6 +253,7 @@
         return;
       }
 
+      // 상호 정보 렌더링
       document.getElementById('shopName').innerText = data.shopName || '미확인';
       document.getElementById('shopDate').innerText = data.date || '-';
       document.getElementById('bizNo').innerText = data.bizNo || '-';
@@ -272,6 +261,7 @@
       document.getElementById('shopIndustry').innerText = data.shopIndustry || '업종 정보 없음';
       document.getElementById('shopCard').style.display = 'block';
 
+      // 제품 목록 렌더링
       const tbody = document.getElementById('itemsTableBody');
       tbody.innerHTML = '';
 
