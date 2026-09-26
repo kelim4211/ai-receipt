@@ -25,16 +25,17 @@ export default async function handler(req, res) {
 
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
-ITEM: 원본제품명_및_고유식별정보 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
+ITEM: 원본제품명 | 복원제품명(품번제외_순수제품명만) | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
 [상호명 판독 및 스마트 추정 규칙]
-- 영수증 상단에 사업자번호, 전화번호, 명확한 상호명이 있는 경우 해당 상호명을 그대로 추출하고 신뢰도는 'official'로 하십시오.
-- 만약 상단 정보가 잘렸더라도, 고유 품번 패턴(예: [ 60566 ] 등), 균일가 가격대, 품목 특징을 통해 특정 브랜드(예: 다이소 등)가 확실히 유추되는 경우 해당 브랜드명을 적되 추정 근거를 포함하십시오. 명확한 근거가 없으면 '정보없음'으로 처리하십시오.
+- 영수증 상단에 사업자번호, 전화번호, 명확한 상호명이 있는 경우 해당 상호명을 추출하고 'official'로 하십시오.
+- 상단 정보가 잘렸더라도 고유 품번 패턴, 균일가 가격대, 품목 특징을 통해 특정 브랜드(예: 다이소 등)가 확실히 유추되는 경우 브랜드명을 적고 추정 근거를 포함하십시오. 명확한 근거가 없으면 '정보없음'으로 처리하십시오.
 
-[제품 및 고유식별정보 활용 규칙]
-- 영수증 품목명 아래에 적힌 고유 품번, 바코드 번호 등 고유 식별 정보가 있다면 제품명(ITEM)에 함께 포함하여 추출하십시오. (수량이나 단순 포장 규격은 제외)`;
+[제품명 복원 순수화 규칙]
+- 복원제품명에는 검색에 방해가 되는 내부 품번, 바코드 번호, 불필요한 수량 및 규격 코드를 일절 포함시키지 마십시오.
+- 오직 웹 검색 및 식별에 최적화된 순수한 상품 표준 명칭만 깔끔하게 복원하여 출력하십시오.`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -52,7 +53,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증의 품목, 고유식별정보, 상호(또는 품번 패턴 기반 브랜드 추정), 할인, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
+              { text: "영수증의 품목, 상호(또는 품번 패턴 기반 브랜드 추정), 할인, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -80,7 +81,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
     const resultData = {
       shopOcr: '',
       shopName: '정보없음',
-      shopConfidence: 'none', // 'official', 'estimated', 'none'
+      shopConfidence: 'none',
       shopReason: '',
       shopIndustry: '',
       date: '미확인',
@@ -112,8 +113,8 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         if (rawShop.includes('다이소') || rawShop.includes('추정')) {
           resultData.shopName = rawShop;
           resultData.shopConfidence = 'estimated';
-          resultData.shopReason = '품번 패턴([ 60566 ] 등) 및 천원 단위 균일가 상품군 특징 기반 유추';
-        } else if (!rawShop || rawShop.includes('미확인' ) || rawShop.includes('정보없음') || rawShop.length < 2) {
+          resultData.shopReason = '품번 패턴 및 천원 단위 균일가 상품군 특징 기반 유추';
+        } else if (!rawShop || rawShop.includes('미확인') || rawShop.includes('정보없음') || rawShop.length < 2) {
           resultData.shopName = '정보없음';
           resultData.shopConfidence = 'none';
         } else {
@@ -172,7 +173,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // 자가 검산 및 누락 할인 역산 보정
     let sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
     let sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
     let calculatedTotal = sumProductsFinal - sumOverallEtc;
