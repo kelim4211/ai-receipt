@@ -294,8 +294,18 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
+    // 제품검색 URL 생성 시 유통사 브랜드(다이소 등)는 포함하고, 편의점 및 일반 소매점은 배제하는 분기 로직
     function getSmartSearchURL(queryStr, brandName = "") {
-      let fullQuery = (queryStr || "").trim();
+      let queryText = (queryStr || "").trim();
+      let cleanBrand = "";
+      
+      if (brandName && !brandName.includes("정보없음")) {
+        cleanBrand = brandName.replace(/\(AI 추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
+      }
+
+      const isRetailBrand = cleanBrand.includes("다이소") || cleanBrand.includes("이마트") || cleanBrand.includes("코스트코");
+
+      let fullQuery = (isRetailBrand && cleanBrand) ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
 
       if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
@@ -379,7 +389,7 @@
           cropperInstance.destroy();
         }
 
-        // [안정성 강화된 Cropper 설정] 더블클릭 영역 해제 방지 및 터치 최적화
+        // 안정성 강화된 Cropper 설정 (더블클릭 영역 해제 방지 및 터치 최적화)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.92,
