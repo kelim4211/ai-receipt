@@ -25,19 +25,22 @@ export default async function handler(req, res) {
 
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
-ITEM: 원본제품명 | 순수복원제품명(규격_수량_품번제외) | 단가또는총액 | 할인금액 | 최종금액
+ITEM: 원본제품명 | 순수복원제품명(규격_수량_품번제외) | 단가곱하기수량의합(가장오른쪽총액숫자) | 할인액 | 최종금액
 ETC: 항목명 | 금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
 [상호명 분리 판독 및 스마트 추정 규칙]
-- 영수증 상단에 실제 인쇄된 상호명이 있는 경우 샵오씨알(SHOP의 첫 번째 필드)에 기재하고, 없으면 '정보없음'으로 하십시오.
+- 영수증 상단에 실제 인쇄된 상호명이 있는 경우 샵오씨알에 기재하고, 없으면 '정보없음'으로 하십시오.
 - 상단 상호명이 없더라도 고유 품번 패턴, 균일가 가격대, 품목 특징을 통해 특정 브랜드(예: 다이소 등)가 확실히 유추되는 경우 AI 복원 상호명으로 판별되도록 하십시오.
 
 [순수 상품명 추출 및 규격/수량 제거 절대 규칙]
 - 복원제품명에는 오직 상품의 본질적인 고유 명칭만 남기고, 용량, 수량, 규격, 품번, 바코드 등 부가 정보는 완벽히 배제하십시오.
 
+[품목 금액(단가*수량) 추출 엄격 규칙]
+- ITEM 양식의 세 번째 필드('단가곱하기수량의합')에는 **반드시 해당 품목 행의 가장 오른쪽에 인쇄된 최종 합계 금액 숫자**(예: 2개에 2,000원씩 총 4,000원이면 무조건 '4000')를 정확히 기재하십시오. 단가 단독 숫자를 넣지 마십시오.
+
 [제외 항목 엄격 규칙]
-- 영수증 하단의 '과세', '부가세(면세 등 포함)' 항목은 정산 및 ETC 분석 대상에서 절대 포함하지 말고 완전히 제외하십시오. 오직 순수 결제 할인(DC, 차감 등)만 ETC 또는 할인 항목으로 처리하십시오.`;
+- 영수증 하단의 '과세', '부가세' 항목은 정산 및 ETC 분석 대상에서 절대 포함하지 말고 완전히 제외하십시오.`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -55,7 +58,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증의 상호, 품목(규격제외), 결제 할인 항목, 최종 결제 총액(TOTAL)을 정확히 분석하되 과세 및 부가세는 요약에서 제외하여 지정된 양식으로 출력하시오." },
+              { text: "영수증의 상호, 품목(단가*수량 합산 총액을 세 번째 필드에 정확히 기재), 할인, 최종 결제 총액(TOTAL)을 정확히 분석하되 과세 및 부가세는 제외하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -137,7 +140,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          const basePrice = cleanNum(parts[2], '0');
+          const basePrice = cleanNum(parts[2], '0'); // 단가*수량의 합 (가장 오른쪽 숫자)
           const rawDiscount = cleanNum(parts[3], '0');
           const finalPriceVal = cleanNum(parts[4], basePrice);
 
@@ -154,7 +157,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       } else if (trimmed.startsWith('TOTAL:')) {
         resultData.receiptTotal = Number(cleanNum(trimmed.substring(6), '0'));
       } else if (trimmed.startsWith('ETC:') || /할인|DC|차감/i.test(trimmed)) {
-        // 과세, 부가세 키워드가 포함된 항목은 무조건 요약 및 정산 대상에서 제외
         if (/과세|부가세|세액|면세/i.test(trimmed)) {
           continue;
         }
