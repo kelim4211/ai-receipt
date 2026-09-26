@@ -196,7 +196,7 @@
               <span class="font-black text-brand-900 text-xs flex items-center gap-1.5">
                 <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]
               </span>
-              <!-- 주황색 배너를 상호명 바로 왼쪽(앞)으로 이동 배치 -->
+              <!-- 주황색 배너와 상호명을 바로 왼쪽(앞)에 배치 -->
               <div class="flex items-center gap-2">
                 <span id="shopStatusBadgeContainer"></span>
                 <span id="part1ShopName" class="font-black text-brand-700 text-base tracking-tight">-</span>
@@ -310,15 +310,21 @@
       return `https://search.naver.com/search.naver?query=${encodeURIComponent(fullQuery)}`;
     }
 
+    // [핵심 반영] 새 영수증 첨부 또는 리셋 시 이전 데이터가 완벽하게 초기화되도록 보완
     function clearAnalysisResidue() {
+      currentShopAddress = "";
+      currentShopName = "";
+      activeReceiptBase64 = null;
+
       ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.innerText = (id === 'part1ShopOcr') ? '정보없음' : (id === 'part1ShopName' ? '정보없음' : '-');
+        if(el) el.innerText = (id === 'part1ShopOcr' || id === 'part1ShopName') ? '정보없음' : '-';
       });
       ['part1BizNo', 'part1Address', 'part1Phone'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerText = '정보없음';
       });
+      
       const copyBtn = document.getElementById('copyAddressBtn');
       if(copyBtn) copyBtn.classList.add('hidden');
       
@@ -342,9 +348,6 @@
       
       const summarySec = document.getElementById('receiptSummarySection');
       if(summarySec) summarySec.classList.add('hidden');
-      
-      currentShopAddress = "";
-      currentShopName = "";
     }
 
     function triggerCamera() {
@@ -361,8 +364,18 @@
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
-      currentSelectedSource = source;
+      // 파일 선택 즉시 이전 기록 완전 삭제 실행
       clearAnalysisResidue();
+      
+      const img = document.getElementById('uploadedReceiptImg');
+      if(img) {
+        img.classList.add('hidden');
+        img.src = "";
+      }
+      const previewCont = document.getElementById('receiptPreviewContainer');
+      if(previewCont) previewCont.classList.remove('hidden');
+
+      currentSelectedSource = source;
 
       const reader = new FileReader();
       reader.onload = function (e) {
@@ -476,9 +489,8 @@
     function renderAnalysisUI(data) {
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       
-      // [수정 반영] (추정) 문구 제거 및 순수 상호명만 추출
       let rawShopName = data.shopName || '정보없음';
-      currentShopName = rawShopName.replace(/\s*\(추정\)/g, "").replace(/AI 추정/g, "").trim();
+      currentShopName = rawShopName.replace(/\s*\(추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
       
       setTxt('part1Date', data.date || '-');
       setTxt('part1ShopOcr', data.shopOcr || '정보없음');
