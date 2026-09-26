@@ -30,6 +30,25 @@
       0%, 100% { top: 5%; opacity: 0.2; }
       50% { top: 90%; opacity: 0.9; }
     }
+    
+    /* 모바일 크로퍼(Cropper.js) 조절점(핸들) 터치 영역 확장 및 시인성 개선 */
+    .cropper-point {
+      width: 24px !important;
+      height: 24px !important;
+      background-color: #2563eb !important;
+      opacity: 0.9 !important;
+      border: 2px solid white !important;
+      border-radius: 50% !important;
+    }
+    /* 4방향 모서리 및 변 핸들이 손가락에 잘 잡히도록 터치 타겟 확장 */
+    .cropper-point.point-n { top: -12px !important; }
+    .cropper-point.point-s { bottom: -12px !important; }
+    .cropper-point.point-w { left: -12px !important; }
+    .cropper-point.point-e { right: -12px !important; }
+    .cropper-point.point-nw { top: -12px !important; left: -12px !important; }
+    .cropper-point.point-ne { top: -12px !important; right: -12px !important; }
+    .cropper-point.point-sw { bottom: -12px !important; left: -12px !important; }
+    .cropper-point.point-se { bottom: -12px !important; right: -12px !important; width: 32px !important; height: 32px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -38,7 +57,7 @@
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4 backdrop-blur-xs">
     <div class="flex items-center justify-between text-white border-b border-slate-700 pb-3">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (4방향 조절 가능)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -50,7 +69,7 @@
     </div>
 
     <div class="space-y-2">
-      <p class="text-[11px] text-slate-300 text-center font-medium">영수증 테두리에 맞춰 조절 상자를 맞춰주세요.</p>
+      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리와 모서리를 손가락으로 밀어서 자유롭게 조절하세요.</p>
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
         <button type="button" onclick="confirmCrop()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5">
@@ -165,8 +184,8 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
-                  <button type="button" id="copyAddressBtn" onclick="openMapSearch()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-2 py-1 rounded-md transition shadow-xs flex items-center gap-1">
-                    <i class="fa-solid fa-map-location-dot"></i> 지도 검색
+                  <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-map-location-dot text-brand-600"></i> 지도검색
                   </button>
                 </div>
               </div>
@@ -313,11 +332,21 @@
           cropperInstance.destroy();
         }
 
+        // Cropper 초기화 (모바일 터치 조작 최적화 옵션 강화)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.95,
           responsive: true,
-          restore: false
+          restore: false,
+          checkCrossOrigin: false,
+          modal: true,
+          guides: true,
+          center: true,
+          highlight: true,
+          background: false,
+          autoCrop: true,
+          // 4방향 모서리 및 선을 어디서든 쉽게 잡을 수 있도록 여유 공간 허용
+          toggleDragModeOnDblclick: false
         });
       };
       reader.readAsDataURL(file);
@@ -327,14 +356,15 @@
     function confirmCrop() {
       if (!cropperInstance) return;
 
+      // 해상도 최적화 (1200px 및 0.78 압축률 적용으로 데이터 전송 및 속도 대폭 단축)
       const croppedCanvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1600,
-        maxHeight: 1600,
+        maxWidth: 1200,
+        maxHeight: 1200,
         imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
+        imageSmoothingQuality: 'medium'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.78);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -513,34 +543,45 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    // 지도 검색 버튼 클릭 시 상호명 정제 및 ~로/~길 단위까지만 주소 조합하여 네이버 지도 검색 팝업 오픈
-    function openMapSearch() { 
+    function openMapSearchPopup() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
       }
 
-      let addressParts = currentShopAddress.trim().split(/\s+/);
+      let rawAddr = currentShopAddress.trim();
+      rawAddr = rawAddr.replace(/\([^)]*\)/g, "");
+      rawAddr = rawAddr.replace(/(지하)?\d+[층층상가]\s*(\d+[호호])?/g, "");
+      rawAddr = rawAddr.replace(/\b\d+호\b/g, "");
+
+      let addressParts = rawAddr.trim().split(/\s+/);
       let cutoffIndex = -1;
       for (let i = 0; i < addressParts.length; i++) {
         if (addressParts[i].endsWith('로') || addressParts[i].endsWith('길')) {
           cutoffIndex = i;
+          if (i + 1 < addressParts.length && /^\d+(-?\d+)?$/.test(addressParts[i + 1])) {
+            cutoffIndex = i + 1;
+          }
           break;
         }
       }
 
-      let shortAddress = cutoffIndex !== -1 
-        ? addressParts.slice(0, cutoffIndex + 1).join(" ") 
-        : addressParts.slice(0, 3).join(" ");
+      let shortAddress = "";
+      if (cutoffIndex !== -1) {
+        shortAddress = addressParts.slice(0, cutoffIndex + 1).join(" ");
+      } else {
+        shortAddress = addressParts.slice(0, 5).join(" ");
+      }
 
       let cleanShopName = "";
       if (currentShopName && currentShopName !== "상호명 미확인") {
         cleanShopName = currentShopName
-          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)/g, "")
-          .replace(/주식회사|유한회사/g, "")
+          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
+          .replace(/주식회사|유한회사|사단법인/g, "")
           .trim();
       }
 
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
+      targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
 
       let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
       openCompactPopup(mapSearchURL);
@@ -562,4 +603,3 @@
   </script>
 </body>
 </html>
-```[cite: 1]
