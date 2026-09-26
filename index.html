@@ -183,8 +183,9 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
+                  <!-- 주소검색 버튼 복원 -->
                   <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
-                    <i class="fa-solid fa-map-location-dot text-brand-600"></i> 지도검색
+                    <i class="fa-solid fa-map-location-dot text-brand-600"></i> 주소검색
                   </button>
                 </div>
               </div>
@@ -256,7 +257,6 @@
 
     window.onload = function() { clearAnalysisResidue(); };
 
-    // 제품검색 및 주소검색 공용 독립된 작은 팝업 창 오픈 함수
     function openCompactPopup(urlToOpen) {
       if (!urlToOpen || urlToOpen.includes("미확인")) { return; }
       
@@ -444,7 +444,7 @@
       setTxt('part1Address', currentShopAddress);
       
       const copyBtn = document.getElementById('copyAddressBtn');
-      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.add('hidden');
+      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.remove('hidden');
 
       const products = data.products || [];
       const overallElements = data.overallElements || [];
@@ -540,7 +540,6 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    // 주소 검색 버튼 클릭 시 독립된 작은 팝업 창(window.open)으로 오픈
     function openMapSearchPopup() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
