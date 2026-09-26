@@ -294,7 +294,7 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    // 제품검색 URL 생성 시 유통사 브랜드(다이소 등)는 포함하고, 편의점 및 일반 소매점은 배제하는 분기 로직
+    // 제품검색 URL 생성 시에만 다이소 등 유통사 브랜드 포함, 편의점 및 일반 소매점은 상호명 배제
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = "";
