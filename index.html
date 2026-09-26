@@ -31,7 +31,6 @@
       50% { top: 90%; opacity: 0.9; }
     }
     
-    /* 크로퍼(Cropper.js) 조절점(핸들)을 작고 세련된 형태로 개선 */
     .cropper-point {
       width: 10px !important;
       height: 10px !important;
@@ -183,7 +182,6 @@
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
                   <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
-                  <!-- 주소검색 버튼 복원 -->
                   <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
                     <i class="fa-solid fa-map-location-dot text-brand-600"></i> 주소검색
                   </button>
@@ -508,10 +506,11 @@
 
       const summaryContainer = document.getElementById('summaryItemsContainer');
       if(summaryContainer) {
-        summaryContainer.innerHTML = `
-          <div class="flex justify-between font-bold"><span>품목 정가 합계</span><span>${totalOriginalSum.toLocaleString()}원</span></div>
-          ${totalProductDiscountSum > 0 ? `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목별 할인액 합계</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>` : ''}
-        `;
+        let summaryHTML = `<div class="flex justify-between font-bold"><span>품목 정가 합계</span><span>${totalOriginalSum.toLocaleString()}원</span></div>`;
+        
+        if (totalProductDiscountSum > 0) {
+          summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목별 할인액 합계</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
+        }
 
         let calculatedPayment = totalCalculatedProductsAmount;
 
@@ -520,19 +519,16 @@
           let isDiscount = rawAmountStr.includes('-') || String(el.name || '').includes('할인');
           let amt = Number(rawAmountStr.replace(/[^0-9]/g, ''));
           
-          const row = document.createElement('div');
-          row.className = "flex justify-between font-bold";
-          
           if (isDiscount) {
             calculatedPayment -= amt;
-            row.innerHTML = `<span class="text-rose-700">${el.name}</span><span class="text-rose-600">-${amt.toLocaleString()}원</span>`;
+            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name} (전체 일괄)</span><span>-${amt.toLocaleString()}원</span></div>`;
           } else {
             calculatedPayment += amt;
-            row.innerHTML = `<span class="text-amber-700">${el.name}</span><span class="text-amber-600">+${amt.toLocaleString()}원</span>`;
+            summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>${el.name}</span><span>+${amt.toLocaleString()}원</span></div>`;
           }
-          summaryContainer.appendChild(row);
         });
 
+        summaryContainer.innerHTML = summaryHTML;
         setTxt('summaryFinalPrice', calculatedPayment.toLocaleString() + '원');
       }
       
