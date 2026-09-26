@@ -77,6 +77,28 @@
     </div>
   </div>
 
+  <!-- 제품검색 및 주소검색 공용 독립된 작은 팝업 창 모달 -->
+  <div id="searchPopupModal" class="fixed inset-0 z-50 bg-slate-950/80 hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+    <div class="w-full max-w-lg h-[80vh] max-h-[700px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
+        <span id="searchPopupTitle" class="text-xs font-black flex items-center gap-2 text-brand-300">
+          <i class="fa-solid fa-magnifying-glass"></i> 검색 결과
+        </span>
+        <button type="button" onclick="closeSearchPopup()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-95">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+      <div class="relative flex-1 bg-slate-50 overflow-hidden">
+        <iframe id="searchPopupIframe" src="" class="w-full h-full border-0"></iframe>
+      </div>
+      <div class="bg-slate-900 px-4 py-3 shrink-0 flex justify-center">
+        <button type="button" onclick="closeSearchPopup()" class="w-full sm:w-48 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-black text-xs py-2.5 rounded-xl transition shadow-sm">
+          창 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative pb-20 border-x border-slate-200">
     
     <!-- 상단 헤더 -->
@@ -255,7 +277,7 @@
 
     window.onload = function() { clearAnalysisResidue(); };
 
-    function openCompactPopup(urlToOpen) {
+    function openCompactPopup(urlToOpen, titleText = "검색 결과") {
       if (!urlToOpen || urlToOpen.includes("미확인")) { return; }
       
       const popupWidth = 480;
@@ -442,7 +464,7 @@
       setTxt('part1Address', currentShopAddress);
       
       const copyBtn = document.getElementById('copyAddressBtn');
-      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.remove('hidden');
+      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.add('hidden');
 
       const products = data.products || [];
       const overallElements = data.overallElements || [];
@@ -516,12 +538,12 @@
 
         overallElements.forEach(el => {
           let rawAmountStr = String(el.amount || '0');
-          let isDiscount = rawAmountStr.includes('-') || String(el.name || '').includes('할인');
+          let isDiscount = rawAmountStr.includes('-') || String(el.name || '').includes('할인') || String(el.name || '').includes('DC');
           let amt = Number(rawAmountStr.replace(/[^0-9]/g, ''));
           
           if (isDiscount) {
             calculatedPayment -= amt;
-            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name} (전체 일괄)</span><span>-${amt.toLocaleString()}원</span></div>`;
+            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>-${amt.toLocaleString()}원</span></div>`;
           } else {
             calculatedPayment += amt;
             summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>${el.name}</span><span>+${amt.toLocaleString()}원</span></div>`;
