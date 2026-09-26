@@ -32,21 +32,21 @@
     }
     
     .cropper-point {
-      width: 10px !important;
-      height: 10px !important;
+      width: 14px !important;
+      height: 14px !important;
       background-color: #2563eb !important;
       opacity: 0.95 !important;
       border: 1.5px solid white !important;
       border-radius: 50% !important;
     }
-    .cropper-point.point-n { top: -5px !important; }
-    .cropper-point.point-s { bottom: -5px !important; }
-    .cropper-point.point-w { left: -5px !important; }
-    .cropper-point.point-e { right: -5px !important; }
-    .cropper-point.point-nw { top: -5px !important; left: -5px !important; }
-    .cropper-point.point-ne { top: -5px !important; right: -5px !important; }
-    .cropper-point.point-sw { bottom: -5px !important; left: -5px !important; }
-    .cropper-point.point-se { bottom: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; }
+    .cropper-point.point-n { top: -7px !important; }
+    .cropper-point.point-s { bottom: -7px !important; }
+    .cropper-point.point-w { left: -7px !important; }
+    .cropper-point.point-e { right: -7px !important; }
+    .cropper-point.point-nw { top: -7px !important; left: -7px !important; }
+    .cropper-point.point-ne { top: -7px !important; right: -7px !important; }
+    .cropper-point.point-sw { bottom: -7px !important; left: -7px !important; }
+    .cropper-point.point-se { bottom: -7px !important; right: -7px !important; width: 16px !important; height: 16px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -294,7 +294,6 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    // 상호명(brandName)을 일체 결합하지 않고 오직 순수 복원된 제품명만 검색 쿼리로 사용
     function getSmartSearchURL(queryStr, brandName = "") {
       let fullQuery = (queryStr || "").trim();
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
@@ -380,9 +379,10 @@
           cropperInstance.destroy();
         }
 
+        // [안정성 강화된 Cropper 설정] 더블클릭 영역 해제 방지 및 터치 최적화
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
-          autoCropArea: 0.95,
+          autoCropArea: 0.92,
           responsive: true,
           restore: false,
           checkCrossOrigin: false,
@@ -392,7 +392,12 @@
           highlight: true,
           background: false,
           autoCrop: true,
-          toggleDragModeOnDblclick: false
+          zoomable: true,
+          zoomOnTouch: false,
+          scalable: false,
+          toggleDragModeOnDblclick: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true
         });
       };
       reader.readAsDataURL(file);
