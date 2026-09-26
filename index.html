@@ -294,7 +294,6 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    // [지능형 검색 쿼리 필터링 반영] 편의점 및 일반 점포명이 상호로 잡힌 경우 검색 키워드에서 제외하여 정확도 극대화
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = "";
@@ -303,7 +302,6 @@
         cleanBrand = brandName.replace(/\(AI 추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
       }
 
-      // 편의점 가맹점명이나 일반 소매점/식당 점포 키워드가 포함되어 있으면 검색어 결합 스킵
       const excludeStoreKeywords = ["CU", "GS25", "세븐일레븐", "이마트24", "미니스톱", "점", "슈퍼", "마트", "상회", "식당", "구내식당", "편의점"];
       const isGeneralStore = excludeStoreKeywords.some(keyword => cleanBrand.includes(keyword));
 
@@ -584,7 +582,7 @@
             </button>
           </div>
           <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span class="text-[10px] text-brand-600 font-bold">순수 복원 제품명</span>
+            <span class="text-[10px] text-brand-600 font-bold">제품명 [AI 복원]</span>
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
