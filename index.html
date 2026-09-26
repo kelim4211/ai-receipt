@@ -40,7 +40,6 @@
       border: 2px solid white !important;
       border-radius: 50% !important;
     }
-    /* 4방향 모서리 및 변 핸들이 손가락에 잘 잡히도록 터치 타겟 확장 */
     .cropper-point.point-n { top: -12px !important; }
     .cropper-point.point-s { bottom: -12px !important; }
     .cropper-point.point-w { left: -12px !important; }
@@ -76,6 +75,26 @@
           <i class="fa-solid fa-check"></i> <span>영역 자르기 완료</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- 앱 내 지도 검색 결과 인앱 모달 (외부 앱 전환 방지용) -->
+  <div id="mapModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex flex-col justify-between p-3 backdrop-blur-xs">
+    <div class="flex items-center justify-between bg-slate-900 text-white px-4 py-3 rounded-t-2xl border-b border-slate-800">
+      <span class="text-xs font-black flex items-center gap-2">
+        <i class="fa-solid fa-map-location-dot text-brand-400"></i> 매장 위치 지도 검색
+      </span>
+      <button type="button" onclick="closeMapModal()" class="text-slate-400 hover:text-white p-1 text-base">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="relative flex-1 bg-white overflow-hidden">
+      <iframe id="mapIframe" src="" class="w-full h-full border-0"></iframe>
+    </div>
+    <div class="bg-slate-900 p-3 rounded-b-2xl text-center">
+      <button type="button" onclick="closeMapModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs py-2.5 rounded-xl">
+        지도 닫기
+      </button>
     </div>
   </div>
 
@@ -332,7 +351,6 @@
           cropperInstance.destroy();
         }
 
-        // Cropper 초기화 (모바일 터치 조작 최적화 옵션 강화)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.95,
@@ -345,7 +363,6 @@
           highlight: true,
           background: false,
           autoCrop: true,
-          // 4방향 모서리 및 선을 어디서든 쉽게 잡을 수 있도록 여유 공간 허용
           toggleDragModeOnDblclick: false
         });
       };
@@ -356,7 +373,6 @@
     function confirmCrop() {
       if (!cropperInstance) return;
 
-      // 해상도 최적화 (1200px 및 0.78 압축률 적용으로 데이터 전송 및 속도 대폭 단축)
       const croppedCanvas = cropperInstance.getCroppedCanvas({
         maxWidth: 1200,
         maxHeight: 1200,
@@ -543,6 +559,7 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
+    // 앱 내 인앱 모달로 지도 검색 띄우기 (외부 앱/새창 실행 원천 차단)
     function openMapSearchPopup() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
@@ -584,7 +601,21 @@
       targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
 
       let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
-      openCompactPopup(mapSearchURL);
+      
+      // 새 창을 띄우는 대신 앱 내부의 mapModal 열기
+      const mapModal = document.getElementById('mapModal');
+      const mapIframe = document.getElementById('mapIframe');
+      if (mapModal && mapIframe) {
+        mapIframe.src = mapSearchURL;
+        mapModal.classList.remove('hidden');
+      }
+    }
+
+    function closeMapModal() {
+      const mapModal = document.getElementById('mapModal');
+      const mapIframe = document.getElementById('mapIframe');
+      if (mapModal) mapModal.classList.add('hidden');
+      if (mapIframe) mapIframe.src = ""; // 메모리 및 로딩 초기화
     }
     
     function resetSystem() { 
