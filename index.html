@@ -31,23 +31,23 @@
       50% { top: 90%; opacity: 0.9; }
     }
     
-    /* 모바일 크로퍼(Cropper.js) 조절점(핸들) 터치 영역 확장 및 시인성 개선 */
+    /* 크로퍼(Cropper.js) 조절점(핸들)을 작고 세련된 형태로 개선 */
     .cropper-point {
-      width: 24px !important;
-      height: 24px !important;
+      width: 10px !important;
+      height: 10px !important;
       background-color: #2563eb !important;
-      opacity: 0.9 !important;
-      border: 2px solid white !important;
+      opacity: 0.95 !important;
+      border: 1.5px solid white !important;
       border-radius: 50% !important;
     }
-    .cropper-point.point-n { top: -12px !important; }
-    .cropper-point.point-s { bottom: -12px !important; }
-    .cropper-point.point-w { left: -12px !important; }
-    .cropper-point.point-e { right: -12px !important; }
-    .cropper-point.point-nw { top: -12px !important; left: -12px !important; }
-    .cropper-point.point-ne { top: -12px !important; right: -12px !important; }
-    .cropper-point.point-sw { bottom: -12px !important; left: -12px !important; }
-    .cropper-point.point-se { bottom: -12px !important; right: -12px !important; width: 32px !important; height: 32px !important; }
+    .cropper-point.point-n { top: -5px !important; }
+    .cropper-point.point-s { bottom: -5px !important; }
+    .cropper-point.point-w { left: -5px !important; }
+    .cropper-point.point-e { right: -5px !important; }
+    .cropper-point.point-nw { top: -5px !important; left: -5px !important; }
+    .cropper-point.point-ne { top: -5px !important; right: -5px !important; }
+    .cropper-point.point-sw { bottom: -5px !important; left: -5px !important; }
+    .cropper-point.point-se { bottom: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -56,7 +56,7 @@
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4 backdrop-blur-xs">
     <div class="flex items-center justify-between text-white border-b border-slate-700 pb-3">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (4방향 조절 가능)
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (4방향 조절)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -68,7 +68,7 @@
     </div>
 
     <div class="space-y-2">
-      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리와 모서리를 손가락으로 밀어서 자유롭게 조절하세요.</p>
+      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리와 모서리를 밀어서 자유롭게 조절하세요.</p>
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
         <button type="button" onclick="confirmCrop()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5">
@@ -78,23 +78,28 @@
     </div>
   </div>
 
-  <!-- 앱 내 지도 검색 결과 인앱 모달 (외부 앱 전환 방지용) -->
-  <div id="mapModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex flex-col justify-between p-3 backdrop-blur-xs">
-    <div class="flex items-center justify-between bg-slate-900 text-white px-4 py-3 rounded-t-2xl border-b border-slate-800">
-      <span class="text-xs font-black flex items-center gap-2">
-        <i class="fa-solid fa-map-location-dot text-brand-400"></i> 매장 위치 지도 검색
-      </span>
-      <button type="button" onclick="closeMapModal()" class="text-slate-400 hover:text-white p-1 text-base">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-    <div class="relative flex-1 bg-white overflow-hidden">
-      <iframe id="mapIframe" src="" class="w-full h-full border-0"></iframe>
-    </div>
-    <div class="bg-slate-900 p-3 rounded-b-2xl text-center">
-      <button type="button" onclick="closeMapModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs py-2.5 rounded-xl">
-        지도 닫기
-      </button>
+  <!-- 제품검색 및 주소검색 공용 조그마한 인앱 팝업 모달 -->
+  <div id="searchPopupModal" class="fixed inset-0 z-50 bg-slate-950/80 hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+    <div class="w-full max-w-lg h-[80vh] max-h-[700px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <!-- 상단 헤더 및 X 닫기 버튼 -->
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
+        <span id="searchPopupTitle" class="text-xs font-black flex items-center gap-2 text-brand-300">
+          <i class="fa-solid fa-magnifying-glass"></i> 검색 결과
+        </span>
+        <button type="button" onclick="closeSearchPopup()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-95">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+      <!-- 검색 결과 표시 프레임 -->
+      <div class="relative flex-1 bg-slate-50 overflow-hidden">
+        <iframe id="searchPopupIframe" src="" class="w-full h-full border-0"></iframe>
+      </div>
+      <!-- 하단 닫기 바 -->
+      <div class="bg-slate-900 px-4 py-3 shrink-0 flex justify-center">
+        <button type="button" onclick="closeSearchPopup()" class="w-full sm:w-48 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-black text-xs py-2.5 rounded-xl transition shadow-sm">
+          창 닫기
+        </button>
+      </div>
     </div>
   </div>
 
@@ -276,16 +281,28 @@
 
     window.onload = function() { clearAnalysisResidue(); };
 
-    function openCompactPopup(urlToOpen) {
+    function openCompactPopup(urlToOpen, titleText = "검색 결과") {
       if (!urlToOpen || urlToOpen.includes("미확인")) { return; }
       
-      const popupWidth = 480;
-      const popupHeight = 720;
-      const left = (window.screen.width - popupWidth) / 2;
-      const top = (window.screen.height - popupHeight) / 2;
+      const modal = document.getElementById('searchPopupModal');
+      const iframe = document.getElementById('searchPopupIframe');
+      const titleEl = document.getElementById('searchPopupTitle');
       
-      const options = `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`;
-      window.open(urlToOpen, 'IndependentProductSearchPopup', options);
+      if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-magnifying-glass text-brand-400"></i> ${titleText}`;
+      }
+      
+      if (iframe && modal) {
+        iframe.src = urlToOpen;
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function closeSearchPopup() {
+      const modal = document.getElementById('searchPopupModal');
+      const iframe = document.getElementById('searchPopupIframe');
+      if (modal) modal.classList.add('hidden');
+      if (iframe) iframe.src = "";
     }
 
     function getSmartSearchURL(queryStr) {
@@ -517,7 +534,7 @@
 
         const actionBtn = card.querySelector('.search-action-btn');
         if (actionBtn) {
-          actionBtn.onclick = () => openCompactPopup(searchURL);
+          actionBtn.onclick = () => openCompactPopup(searchURL, `제품 검색: ${resolvedQuery}`);
         }
 
         fragment.appendChild(card);
@@ -559,7 +576,6 @@
       if(summarySec) summarySec.classList.remove('hidden');
     }
 
-    // 앱 내 인앱 모달로 지도 검색 띄우기 (외부 앱/새창 실행 원천 차단)
     function openMapSearchPopup() { 
       if (!currentShopAddress || currentShopAddress.includes("미확인")) {
         return;
@@ -600,22 +616,8 @@
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
       targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
 
-      let mapSearchURL = `https://map.naver.com/v5/search/${encodeURIComponent(targetKeyword)}`;
-      
-      // 새 창을 띄우는 대신 앱 내부의 mapModal 열기
-      const mapModal = document.getElementById('mapModal');
-      const mapIframe = document.getElementById('mapIframe');
-      if (mapModal && mapIframe) {
-        mapIframe.src = mapSearchURL;
-        mapModal.classList.remove('hidden');
-      }
-    }
-
-    function closeMapModal() {
-      const mapModal = document.getElementById('mapModal');
-      const mapIframe = document.getElementById('mapIframe');
-      if (mapModal) mapModal.classList.add('hidden');
-      if (mapIframe) mapIframe.src = ""; // 메모리 및 로딩 초기화
+      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword + " 위치")}`;
+      openCompactPopup(mapSearchURL, `매장 위치 검색: ${cleanShopName || shortAddress}`);
     }
     
     function resetSystem() { 
