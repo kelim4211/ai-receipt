@@ -191,10 +191,17 @@
           </div>
 
           <div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200 space-y-2.5">
-            <div class="flex justify-between items-center border-b border-blue-200/80 pb-2">
-              <span class="font-black text-brand-900 text-xs"><i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]</span>
-              <span id="part1ShopName" class="font-black text-brand-700 text-sm">-</span>
+            <div class="flex justify-between items-center border-b border-blue-200/80 pb-2 flex-wrap gap-1">
+              <span class="font-black text-brand-900 text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]
+              </span>
+              <!-- 상호 신뢰도 상태 배지 영역 -->
+              <span id="shopStatusBadgeContainer"></span>
             </div>
+            
+            <!-- AI 유추 근거 설명 영역 (추정일 때만 노출) -->
+            <div id="shopReasonContainer" class="hidden text-[10.5px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium"></div>
+
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-bold w-24 shrink-0">사업자번호:</span>
@@ -289,10 +296,9 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    // [수정 반영] 제품검색 키워드 생성 시 제품명과 고유식별정보(품번 등)를 함께 결합하여 활용
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
-      let brand = (brandName && !brandName.includes("정보없음")) ? brandName : "";
+      let brand = (brandName && !brandName.includes("정보없음")) ? brandName.replace(/\(AI 추정\)/g, "").trim() : "";
       
       let fullQuery = brand ? `${brand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
@@ -313,6 +319,15 @@
       const copyBtn = document.getElementById('copyAddressBtn');
       if(copyBtn) copyBtn.classList.add('hidden');
       
+      const badgeCont = document.getElementById('shopStatusBadgeContainer');
+      if(badgeCont) badgeCont.innerHTML = '';
+      
+      const reasonCont = document.getElementById('shopReasonContainer');
+      if(reasonCont) {
+        reasonCont.innerText = '';
+        reasonCont.classList.add('hidden');
+      }
+
       const badge = document.getElementById('storeOcrBadge');
       if(badge) badge.innerText = "판독 대기";
       
@@ -463,6 +478,34 @@
       setTxt('part1ShopOcr', data.shopOcr || '정보없음');
       setTxt('part1ShopName', currentShopName);
 
+      // 상호 신뢰도 상태에 따른 UI 뱃지 및 유추 근거 렌더링
+      const badgeContainer = document.getElementById('shopStatusBadgeContainer');
+      const reasonContainer = document.getElementById('shopReasonContainer');
+
+      if (data.shopConfidence === 'estimated') {
+        if (badgeContainer) {
+          badgeContainer.innerHTML = `<span class="text-[10px] bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-triangle-exclamation"></i> AI 추정 (확인 필요)</span>`;
+        }
+        if (reasonContainer && data.shopReason) {
+          reasonContainer.innerText = `💡 유추 근거: ${data.shopReason}`;
+          reasonContainer.classList.remove('hidden');
+        }
+      } else if (data.shopConfidence === 'official') {
+        if (badgeContainer) {
+          badgeContainer.innerHTML = `<span class="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-circle-check"></i> 공식 정보</span>`;
+        }
+        if (reasonContainer) {
+          reasonContainer.classList.add('hidden');
+        }
+      } else {
+        if (badgeContainer) {
+          badgeContainer.innerHTML = `<span class="text-[10px] bg-slate-400 text-white font-black px-2.5 py-0.5 rounded-full">정보 없음</span>`;
+        }
+        if (reasonContainer) {
+          reasonContainer.classList.add('hidden');
+        }
+      }
+
       setTxt('part1BizNo', data.bizNo || '정보없음');
       setTxt('part1Phone', data.phone || '정보없음');
       
@@ -496,7 +539,6 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        // 검색 쿼리에 제품명/고유식별정보와 상호명(브랜드)을 함께 결합
         const searchURL = getSmartSearchURL(resolvedQuery, currentShopName);
 
         const card = document.createElement('div');
@@ -598,7 +640,7 @@
       if (currentShopName && !currentShopName.includes("정보없음")) {
         cleanShopName = currentShopName
           .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
-          .replace(/주식회사|유한회사|사단법인/g, "")
+          .replace(/주식회사|유한회사|사단법인|AI 추정/g, "")
           .trim();
       }
 
