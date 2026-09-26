@@ -25,13 +25,16 @@ export default async function handler(req, res) {
 
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
-ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
+ITEM: 원본제품명_및_고유식별정보 | 복원제품명 | 단가또는총액 | 할인금액 | 최종금액
 ETC: 항목명 | 금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[할인 항목 및 최종 총액 추출 규칙]
-- 영수증 내에 표기된 모든 종류의 할인 항목은 그 명칭('결제 할인', '포인트 할인', '쿠폰 할인' 등 영수증에 인쇄된 글자 그대로)을 ETC 항목으로 반드시 출력하십시오[cite: 5].
-- 영수증 최하단에 인쇄된 최종 지불 총액('총구 매액', '합계', '신용카드' 등)을 찾아 'TOTAL: 금액' 형태로 마지막 줄에 출력하십시오.`;
+[상호명 판독 및 엄격한 보류 규칙]
+- 사업자등록번호, 전화번호, 매장 주소 중 가맹점을 특정할 수 있는 고유 식별 정보가 1개 이상 명백히 존재하는 경우에만 상호명을 추출하십시오.
+- 식별 정보가 없어 확신할 수 없는 경우, 품번이나 제품명만으로 짐작하지 말고 반드시 '정보없음'으로 출력하십시오.
+
+[제품 및 고유식별정보 활용 규칙]
+- 영수증 품목명 아래에 적힌 고유 품번, 바코드 번호 등 고유 식별 정보가 있다면 제품명(ITEM)에 함께 포함하여 추출하십시오. (단, 수량이나 단순 포장 규격은 제외)`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -49,7 +52,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증의 품목, 영수증에 적힌 실제 할인 명칭과 금액, 그리고 최종 결제 총액(TOTAL)을 정확히 추출하시오[cite: 5]." },
+              { text: "영수증의 품목, 고유식별정보, 할인 항목, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -59,7 +62,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
     const responseText = await response.text();
     if (!response.ok) {
-      console.error("Gemini API Error Detail:", responseText);
       return res.status(500).json({ error: `AI 서버 통신 실패 (${response.status}): ${responseText}` });
     }
 
@@ -77,12 +79,12 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
     const resultData = {
       shopOcr: '',
-      shopName: '',
+      shopName: '정보없음',
       shopIndustry: '',
       date: '미확인',
       bizNo: '미확인',
       phone: '미확인',
-      address: '미확인',
+      address: '정보없음',
       overallElements: [],
       products: [],
       receiptTotal: 0
@@ -103,13 +105,19 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
       if (trimmed.startsWith('SHOP:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
-        resultData.shopName = parts[0] || '상호명 미확인';
-        resultData.shopOcr = parts[0] || '';
+        let rawShop = parts[0] || '정보없음';
+        if (!rawShop || rawShop.includes('미확인') || rawShop.length < 2) {
+          resultData.shopName = '정보없음';
+          resultData.shopOcr = '';
+        } else {
+          resultData.shopName = rawShop;
+          resultData.shopOcr = rawShop;
+        }
         resultData.shopIndustry = parts[1] || '';
         resultData.date = parts[2] || '미확인';
-        resultData.bizNo = parts[3] || '미확인';
-        resultData.phone = parts[4] || '미확인';
-        resultData.address = parts[5] || '미확인';
+        resultData.bizNo = parts[3] || '정보없음';
+        resultData.phone = parts[4] || '정보없음';
+        resultData.address = parts[5] || '정보없음';
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
@@ -155,7 +163,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // 자가 검산 및 누락 할인 역산 보정 (영수증에 적힌 실제 명칭 '결제 할인' 등으로 반영)
     let sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
     let sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
     let calculatedTotal = sumProductsFinal - sumOverallEtc;
