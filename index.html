@@ -183,11 +183,11 @@
             <span id="part1Date" class="font-black text-brand-700 text-sm">-</span>
           </div>
 
-          <!-- 상호명 [OCR] (덜 부각되는 폰트 스타일 적용) -->
+          <!-- 상호명 [OCR] (정보가 없으면 '정보없음' 표기 및 덜 부각되는 스타일) -->
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center gap-2">
               <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [OCR]</span>
-              <span id="part1ShopOcr" class="font-bold text-slate-500 text-xs truncate">-</span>
+              <span id="part1ShopOcr" class="font-bold text-slate-500 text-xs truncate">정보없음</span>
             </div>
           </div>
 
@@ -201,14 +201,14 @@
             
             <div id="shopReasonContainer" class="hidden text-[10.5px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium"></div>
 
-            <!-- 사업자번호, 매장주소, 전화번호 한 줄 나열 영역 -->
+            <!-- 사업자번호/매장주소/전화번호 항목명 변경 및 슬래시 나열, 주소검색 버튼 유지 -->
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
-              <div class="flex items-center gap-1.5 flex-wrap leading-relaxed">
-                <span class="text-slate-500">사업자:</span> <span id="part1BizNo" class="text-slate-900">정보없음</span>
-                <span class="text-slate-300">/</span>
-                <span class="text-slate-500">주소:</span> <span id="part1Address" class="text-slate-900 truncate max-w-[150px]">정보없음</span>
-                <span class="text-slate-300">/</span>
-                <span class="text-slate-500">전화:</span> <span id="part1Phone" class="text-slate-900">정보없음</span>
+              <div class="flex items-center gap-1 flex-wrap leading-relaxed">
+                <span class="text-slate-500">사업자번호:</span> <span id="part1BizNo" class="text-slate-900">정보없음</span>
+                <span class="text-slate-300 font-normal px-0.5">/</span>
+                <span class="text-slate-500">매장주소:</span> <span id="part1Address" class="text-slate-900 truncate max-w-[120px]">정보없음</span>
+                <span class="text-slate-300 font-normal px-0.5">/</span>
+                <span class="text-slate-500">전화번호:</span> <span id="part1Phone" class="text-slate-900">정보없음</span>
               </div>
               <div class="pt-1 flex justify-end">
                 <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
@@ -309,7 +309,7 @@
     function clearAnalysisResidue() {
       ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.innerText = '-';
+        if(el) el.innerText = (id === 'part1ShopOcr') ? '정보없음' : '-';
       });
       ['part1BizNo', 'part1Address', 'part1Phone'].forEach(id => {
         const el = document.getElementById(id);
