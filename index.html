@@ -196,7 +196,6 @@
               <span class="font-black text-brand-900 text-xs flex items-center gap-1.5">
                 <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]
               </span>
-              <!-- 주황색 배너와 상호명 텍스트의 글씨체/크기를 항목명(text-xs, font-black)과 일치시킴 -->
               <div class="flex items-center gap-2">
                 <span id="shopStatusBadgeContainer"></span>
                 <span id="part1ShopName" class="font-black text-brand-900 text-xs tracking-tight">-</span>
@@ -295,6 +294,7 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
+    // [지능형 검색 쿼리 필터링 반영] 편의점 및 일반 점포명이 상호로 잡힌 경우 검색 키워드에서 제외하여 정확도 극대화
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = "";
@@ -303,7 +303,11 @@
         cleanBrand = brandName.replace(/\(AI 추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
       }
 
-      let fullQuery = cleanBrand ? `${cleanBrand} ${queryText}` : queryText;
+      // 편의점 가맹점명이나 일반 소매점/식당 점포 키워드가 포함되어 있으면 검색어 결합 스킵
+      const excludeStoreKeywords = ["CU", "GS25", "세븐일레븐", "이마트24", "미니스톱", "점", "슈퍼", "마트", "상회", "식당", "구내식당", "편의점"];
+      const isGeneralStore = excludeStoreKeywords.some(keyword => cleanBrand.includes(keyword));
+
+      let fullQuery = (!isGeneralStore && cleanBrand) ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
 
       if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
