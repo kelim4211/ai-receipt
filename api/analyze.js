@@ -5,6 +5,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: '잘못된 접근입니다.' });
   }
 
+  // 캐시 제어 및 무상태(Stateless) 보장
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
   try {
     const { image } = req.body;
     if (!image) {
@@ -18,7 +21,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
@@ -29,15 +32,18 @@ ITEM: 원본제품명 | 순수복원제품명(규격_수량_품번제외) | 단�
 ETC: 항목명 | 금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[상호명 분리 판독 및 스마트 추정 규칙]
-- 영수증 상단에 실제 인쇄된 상호명이 있는 경우 샵오씨알에 기재하고, 없으면 '정보없음'으로 하십시오.
-- 상단 상호명이 없더라도 고유 품번 패턴, 균일가 가격대, 품목 특징을 통해 특정 브랜드(예: 다이소 등)가 확실히 유추되는 경우 AI 복원 상호명으로 판별되도록 하십시오.
+[상호명 [OCR] 절대 규칙 (수정불가)]
+- 영수증 상단 원본 이미지에 명확한 상호명 텍스트가 인쇄되어 있는 경우에만 SHOP의 첫 번째 필드에 해당 원본 상호명을 적으십시오.
+- 영수증에 상호명이 존재하지 않거나 잘려 있는 경우, SHOP의 첫 번째 필드는 무조건 '정보없음'이라고 적으십시오. 절대 추정된 브랜드를 OCR 자리에 넣지 마십시오.
+
+[상호명 [AI 복원] 스마트 추정 규칙]
+- 상호명 [OCR]이 '정보없음'이더라도, 고유 품번 패턴, 균일가 가격대, 품목 특징을 통해 특정 브랜드(예: 다이소 등)가 확실히 유추되는 경우에만 상호명 [AI 복원] 영역에서 브랜드명을 추정하여 판별하십시오.
 
 [순수 상품명 추출 및 규격/수량 제거 절대 규칙]
 - 복원제품명에는 오직 상품의 본질적인 고유 명칭만 남기고, 용량, 수량, 규격, 품번, 바코드 등 부가 정보는 완벽히 배제하십시오.
 
 [품목 금액(단가*수량) 추출 엄격 규칙]
-- ITEM 양식의 세 번째 필드('단가곱하기수량의합')에는 **반드시 해당 품목 행의 가장 오른쪽에 인쇄된 최종 합계 금액 숫자**(예: 2개에 2,000원씩 총 4,000원이면 무조건 '4000')를 정확히 기재하십시오. 단가 단독 숫자를 넣지 마십시오.
+- ITEM 양식의 세 번째 필드에는 반드시 해당 품목 행의 가장 오른쪽에 인쇄된 최종 합계 금액 숫자를 정확히 기재하십시오.
 
 [제외 항목 엄격 규칙]
 - 영수증 하단의 '과세', '부가세' 항목은 정산 및 ETC 분석 대상에서 절대 포함하지 말고 완전히 제외하십시오.`;
@@ -58,7 +64,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증의 상호, 품목(단가*수량 합산 총액을 세 번째 필드에 정확히 기재), 할인, 최종 결제 총액(TOTAL)을 정확히 분석하되 과세 및 부가세는 제외하여 지정된 양식으로 출력하시오." },
+              { text: "영수증을 분석하되, 상호명이 없으면 상호명 [OCR]은 무조건 '정보없음'으로 처리하고, 품목명, 할인, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -116,7 +122,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         let rawShopOcr = parts[0] || '정보없음';
         
         let isOcrValid = true;
-        if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) {
+        if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2 || rawShopOcr.includes('추정')) {
           rawShopOcr = '정보없음';
           isOcrValid = false;
         }
@@ -140,19 +146,17 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
-          const basePrice = cleanNum(parts[2], '0'); // 단가*수량의 합 (가장 오른쪽 숫자)
+          const basePrice = cleanNum(parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
           const finalPriceVal = cleanNum(parts[4], basePrice);
 
-          const newProd = {
+          resultData.products.push({
             productOcr: parts[0],
             productAi: parts[1] || parts[0],
             totalPrice: basePrice,
             discount: rawDiscount,
             finalPrice: finalPriceVal
-          };
-
-          resultData.products.push(newProd);
+          });
         }
       } else if (trimmed.startsWith('TOTAL:')) {
         resultData.receiptTotal = Number(cleanNum(trimmed.substring(6), '0'));
@@ -187,14 +191,14 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    let sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
-    let sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
-    let calculatedTotal = sumProductsFinal - sumOverallEtc;
+    const sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
+    const sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
+    const calculatedTotal = sumProductsFinal - sumOverallEtc;
 
     if (resultData.receiptTotal > 0 && calculatedTotal !== resultData.receiptTotal) {
-      let discrepancy = calculatedTotal - resultData.receiptTotal;
+      const discrepancy = calculatedTotal - resultData.receiptTotal;
       if (discrepancy > 0) {
-        let existingDiscount = resultData.overallElements.find(el => el.name.includes('할인') || el.name.includes('DC') || el.name.includes('차감'));
+        const existingDiscount = resultData.overallElements.find(el => el.name.includes('할인') || el.name.includes('DC') || el.name.includes('차감'));
         if (existingDiscount) {
           existingDiscount.amount = String(Number(existingDiscount.amount) + discrepancy);
         } else {
