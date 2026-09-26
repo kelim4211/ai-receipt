@@ -198,12 +198,12 @@
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-bold w-24 shrink-0">사업자번호:</span>
-                <span id="part1BizNo" class="font-bold text-slate-900 text-[10.5px] flex-1">미확인</span>
+                <span id="part1BizNo" class="font-bold text-slate-900 text-[10.5px] flex-1">정보없음</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-bold w-24 shrink-0">매장주소:</span>
                 <div class="flex items-center justify-between gap-2 flex-1 min-w-0">
-                  <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">미확인</span>
+                  <span id="part1Address" class="font-bold text-slate-900 text-[10.5px] truncate flex-1">정보없음</span>
                   <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
                     <i class="fa-solid fa-map-location-dot text-brand-600"></i> 주소검색
                   </button>
@@ -211,7 +211,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-bold w-24 shrink-0">전화번호:</span>
-                <span id="part1Phone" class="font-bold text-slate-900 text-[10.5px] flex-1">미확인</span>
+                <span id="part1Phone" class="font-bold text-slate-900 text-[10.5px] flex-1">정보없음</span>
               </div>
             </div>
           </div>
@@ -278,7 +278,7 @@
     window.onload = function() { clearAnalysisResidue(); };
 
     function openCompactPopup(urlToOpen, titleText = "검색 결과") {
-      if (!urlToOpen || urlToOpen.includes("미확인")) { return; }
+      if (!urlToOpen || urlToOpen.includes("정보없음") || urlToOpen.includes("미확인")) { return; }
       
       const popupWidth = 480;
       const popupHeight = 720;
@@ -289,10 +289,16 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    function getSmartSearchURL(queryStr) {
+    // [수정 반영] 제품검색 키워드 생성 시 제품명과 고유식별정보(품번 등)를 함께 결합하여 활용
+    function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
-      if (!queryText) return 'https://search.naver.com/search.naver?query=';
-      return `https://search.naver.com/search.naver?query=${encodeURIComponent(queryText)}`;
+      let brand = (brandName && !brandName.includes("정보없음")) ? brandName : "";
+      
+      let fullQuery = brand ? `${brand} ${queryText}` : queryText;
+      fullQuery = fullQuery.replace(/\s+/g, " ").trim();
+
+      if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
+      return `https://search.naver.com/search.naver?query=${encodeURIComponent(fullQuery)}`;
     }
 
     function clearAnalysisResidue() {
@@ -302,7 +308,7 @@
       });
       ['part1BizNo', 'part1Address', 'part1Phone'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.innerText = '미확인';
+        if(el) el.innerText = '정보없음';
       });
       const copyBtn = document.getElementById('copyAddressBtn');
       if(copyBtn) copyBtn.classList.add('hidden');
@@ -452,19 +458,19 @@
     function renderAnalysisUI(data) {
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       
-      currentShopName = data.shopName || data.shopOcr || '';
+      currentShopName = data.shopName || '정보없음';
       setTxt('part1Date', data.date || '-');
-      setTxt('part1ShopOcr', data.shopOcr || '-');
+      setTxt('part1ShopOcr', data.shopOcr || '정보없음');
       setTxt('part1ShopName', currentShopName);
 
-      setTxt('part1BizNo', data.bizNo || '미확인');
-      setTxt('part1Phone', data.phone || '미확인');
+      setTxt('part1BizNo', data.bizNo || '정보없음');
+      setTxt('part1Phone', data.phone || '정보없음');
       
-      currentShopAddress = data.address || '미확인';
+      currentShopAddress = data.address || '정보없음';
       setTxt('part1Address', currentShopAddress);
       
       const copyBtn = document.getElementById('copyAddressBtn');
-      if (currentShopAddress !== '미확인' && copyBtn) copyBtn.classList.add('hidden');
+      if (currentShopAddress !== '정보없음' && copyBtn) copyBtn.classList.add('hidden');
 
       const products = data.products || [];
       const overallElements = data.overallElements || [];
@@ -490,7 +496,8 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        const searchURL = getSmartSearchURL(resolvedQuery);
+        // 검색 쿼리에 제품명/고유식별정보와 상호명(브랜드)을 함께 결합
+        const searchURL = getSmartSearchURL(resolvedQuery, currentShopName);
 
         const card = document.createElement('div');
         card.className = "bg-white border-2 border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-sm text-xs";
@@ -506,7 +513,7 @@
             </button>
           </div>
           <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span class="text-[10px] text-brand-600 font-bold">복원 제품명</span>
+            <span class="text-[10px] text-brand-600 font-bold">복원 제품명 및 식별정보</span>
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
@@ -559,7 +566,7 @@
     }
 
     function openMapSearchPopup() { 
-      if (!currentShopAddress || currentShopAddress.includes("미확인")) {
+      if (!currentShopAddress || currentShopAddress.includes("정보없음")) {
         return;
       }
 
@@ -588,7 +595,7 @@
       }
 
       let cleanShopName = "";
-      if (currentShopName && currentShopName !== "상호명 미확인") {
+      if (currentShopName && !currentShopName.includes("정보없음")) {
         cleanShopName = currentShopName
           .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
           .replace(/주식회사|유한회사|사단법인/g, "")
