@@ -294,6 +294,7 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
+    // 백엔드 지능형 검색 판단 결과(정제된 제품명 및 상호명)를 활용하여 자연스럽게 검색 쿼리 생성
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = "";
@@ -302,10 +303,8 @@
         cleanBrand = brandName.replace(/\(AI 추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
       }
 
-      const excludeStoreKeywords = ["CU", "GS25", "세븐일레븐", "이마트24", "미니스톱", "점", "슈퍼", "마트", "상회", "식당", "구내식당", "편의점"];
-      const isGeneralStore = excludeStoreKeywords.some(keyword => cleanBrand.includes(keyword));
-
-      let fullQuery = (!isGeneralStore && cleanBrand) ? `${cleanBrand} ${queryText}` : queryText;
+      // 백엔드가 이미 유통사 브랜드(다이소 등)와 편의점/지점명을 지능적으로 분리·정제하여 넘겨주므로 그대로 조합
+      let fullQuery = cleanBrand ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
 
       if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
