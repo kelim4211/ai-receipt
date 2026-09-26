@@ -30,20 +30,17 @@ ETC: 항목명 | 금액
 
 [상호명(가맹점명) 판독 최우선 규칙]
 - 영수증 내 '사업자번호' 바로 윗줄 혹은 좌측 상단에 위치한 실제 상호명(예: 셀바, 박가령 등)을 정확히 특정하여 추출하십시오. 
-- 카드사 명칭(KB국민카드 등)이나 '신용매출전표' 같은 전표 양식 타이틀을 상호명으로 오인하여 출력하지 마십시오.
 
 [유통사 및 영수증 체계 지능형 판독 규칙]
 - 코스트코, 이마트, 롯데마트, 홈플러스 등 다양한 유통사별 영수증 형태와 할인 체계를 지능적으로 판단하여 분석하십시오.
-- 코스트코 영수증의 경우, 윗줄에 위치한 가장 오른쪽 숫자가 '단가*수량(할인 전 정가)'이며, 그 바로 아랫줄에 '-T' 또는 CPN 형태로 표기된 금액이 '할인액'입니다. 
-- 각 품목별 정가와 할인액, 최종 결제 금액을 정확히 분리하여 ITEM 양식에 맞춰 출력하십시오.
+- 특정 제품명 없이 하단에 표기되는 '결제 할인', '포인트 할인', '구독 할인' 등 전체 일괄 할인 항목은 품목(ITEM)의 할인으로 처리하지 말고, 반드시 독립된 [ETC] 양식(예: ETC: 결제 할인 | -1660 또는 ETC: * 결제 할인 | -1660)으로 출력하십시오[cite: 5].
 
 [단일 승인 전표 및 품목 미기재 영수증 처리 규칙]
-- 세부 품목명 없이 상호명과 총 결제금액(승인금액)만 표기된 영수증(신용카드 전표, 간이영수증, 주유소/택시 전표 등)의 경우, 반드시 단일 기본 품목 1개를 ITEM으로 생성하십시오.
-  * 예: ITEM: 승인금액 | [상호명] 이용료 | 결제금액 | 0 | 결제금액
+- 세부 품목명 없이 상호명과 총 결제금액(승인금액)만 표기된 전표의 경우, 단일 기본 품목 1개를 ITEM으로 생성하십시오.
 
-[정산 및 요약(ETC) 금지 규칙]
-- '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 세금 및 단순 결제 합계 관련 항목은 일체 출력 금지.
-- 오직 통신사 할인, 포인트 사용 등 실질적인 할인/차감 항목만 ETC로 출력할 것.`;
+[정산 및 요약(ETC) 규칙]
+- '과세 합계', '과세', '부가세', '세액', 'VAT', '판매 합계', '합계', '총액', '받은금액', '거스름돈', '카드결제' 등 단순 세금 및 결제 합계는 출력을 금지합니다.
+- 단, '결제 할인', '포인트 할인' 등 실질적인 할인/차감 항목은 ETC로 반드시 출력할 것[cite: 5].`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -61,7 +58,7 @@ ETC: 항목명 | 금액
         contents: [
           {
             parts: [
-              { text: "영수증 이미지의 유통사별 형태와 할인 구조를 분석하여 [출력 양식]에 맞춰 줄 단위로 정확히 추출하시오. 품목 목록이 없는 승인 전표는 [상호명] 이용료 형태의 단일 ITEM으로 구성하시오." },
+              { text: "영수증 이미지의 유통사별 형태와 할인 구조를 분석하여 [출력 양식]에 맞춰 줄 단위로 정확히 추출하시오. 하단 일괄 할인은 ETC 항목으로 분리하시오[cite: 5]." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -142,20 +139,9 @@ ETC: 항목명 | 금액
           resultData.products.push(newProd);
           lastProduct = newProd;
         }
-      } else if (trimmed.includes('-T') || trimmed.includes('CPN') || trimmed.toLowerCase().includes('cpn') || trimmed.includes('IRC') || trimmed.includes('할인')) {
-        const matchNums = trimmed.match(/\d[\d,.]*/g);
-        if (matchNums && matchNums.length > 0 && lastProduct) {
-          const discountVal = Number(cleanNum(matchNums[matchNums.length - 1], '0'));
-          if (discountVal > 0 && discountVal < 50000) {
-            lastProduct.discount = String(discountVal);
-            const origPrice = Number(lastProduct.totalPrice);
-            const calcFinal = origPrice - discountVal;
-            lastProduct.finalPrice = String(calcFinal > 0 ? calcFinal : origPrice);
-          }
-        }
       } else if (trimmed.startsWith('ETC:')) {
         const parts = trimmed.substring(4).split('|').map(cleanStr);
-        const name = parts[0] || '';
+        const name = parts[0].replace(/^[*\s]+/, '') || '';
         if (name && !blockedTermsRegex.test(name)) {
           resultData.overallElements.push({
             name: name,
