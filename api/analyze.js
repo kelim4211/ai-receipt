@@ -29,9 +29,9 @@ ITEM: 원본제품명 | 복원제품명 | 단가또는총액 | 할인금액 | �
 ETC: 항목명 | 금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[핵심 판독 및 검증 규칙]
-- 영수증 하단에 인쇄된 '총구 매액', '합계', '신용카드', '결제금액' 등 최종 지불된 총액을 반드시 찾아내어 'TOTAL: 금액' 형태로 마지막 줄에 출력하십시오.
-- 영수증 내에 표기된 모든 종류의 일괄 할인(결제 할인, 포인트 할인, 멤버십 할인 등)은 기호(* 등) 유무와 관계없이 ETC 양식으로 출력하십시오[cite: 5].`;
+[할인 항목 및 최종 총액 추출 규칙]
+- 영수증 내에 표기된 모든 종류의 할인 항목은 그 명칭('결제 할인', '포인트 할인', '쿠폰 할인' 등 영수증에 인쇄된 글자 그대로)을 ETC 항목으로 반드시 출력하십시오[cite: 5].
+- 영수증 최하단에 인쇄된 최종 지불 총액('총구 매액', '합계', '신용카드' 등)을 찾아 'TOTAL: 금액' 형태로 마지막 줄에 출력하십시오.`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -49,7 +49,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증의 품목, 일괄 할인, 그리고 최하단의 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오[cite: 5]." },
+              { text: "영수증의 품목, 영수증에 적힌 실제 할인 명칭과 금액, 그리고 최종 결제 총액(TOTAL)을 정확히 추출하시오[cite: 5]." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -95,8 +95,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       return val || fallback;
     };
 
-    const blockedTermsRegex = /(과세|면세|부가세|세액|vat|판매\s*합계|합계|총액|받은\s*금액|거스름\s*돈|결제|카드)/i;
-
     const lines = rawText.split('\n');
 
     for (const line of lines) {
@@ -130,10 +128,9 @@ TOTAL: 영수증에_인쇄된_최종결제총액
           resultData.products.push(newProd);
         }
       } else if (trimmed.startsWith('TOTAL:')) {
-        const totalStr = trimmed.substring(6);
-        resultData.receiptTotal = Number(cleanNum(totalStr, '0'));
+        resultData.receiptTotal = Number(cleanNum(trimmed.substring(6), '0'));
       } else if (trimmed.startsWith('ETC:') || /할인|DC|차감/i.test(trimmed)) {
-        let name = "일괄 할인";
+        let name = "할인";
         let amountStr = "0";
 
         if (trimmed.startsWith('ETC:')) {
@@ -144,7 +141,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
           const matchNums = trimmed.match(/\d[\d,.]*/g);
           if (matchNums && matchNums.length > 0) {
             amountStr = cleanNum(matchNums[matchNums.length - 1], '0');
-            name = trimmed.replace(/[\d,.-]+/g, '').replace(/^[*\s]+/, '').trim() || "일괄 할인";
+            name = trimmed.replace(/[\d,.-]+/g, '').replace(/^[*\s]+/, '').trim() || "결제 할인";
           }
         }
 
@@ -158,25 +155,20 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // [핵심 자가 검산(Self-Correction) 및 누락 할인 역산 보정 로직]
+    // 자가 검산 및 누락 할인 역산 보정 (영수증에 적힌 실제 명칭 '결제 할인' 등으로 반영)
     let sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
     let sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
     let calculatedTotal = sumProductsFinal - sumOverallEtc;
 
-    // 만약 영수증에 인쇄된 총액(receiptTotal)이 존재하고, 앱이 산출한 금액과 차이가 발생한다면?
     if (resultData.receiptTotal > 0 && calculatedTotal !== resultData.receiptTotal) {
       let discrepancy = calculatedTotal - resultData.receiptTotal;
-      
-      // 차액이 정확히 양수로 발생하고, 기존에 잡힌 일괄 할인이 없거나 차액과 다르다면 누락된 할인으로 간주하여 자동 보정
       if (discrepancy > 0) {
-        let existingDiscount = resultData.overallElements.find(el => el.name.includes('할인') || el.name.includes('DC'));
+        let existingDiscount = resultData.overallElements.find(el => el.name.includes('할인') || el.name.includes('DC') || el.name.includes('차감'));
         if (existingDiscount) {
-          // 기존 할인 금액에 누락된 차액을 합산
           existingDiscount.amount = String(Number(existingDiscount.amount) + discrepancy);
         } else {
-          // 누락된 할인 항목을 자동 생성하여 추가
           resultData.overallElements.push({
-            name: "현장/결제 할인 (자동 검산 보정)",
+            name: "결제 할인",
             amount: String(discrepancy)
           });
         }
