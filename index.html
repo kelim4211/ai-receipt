@@ -183,7 +183,7 @@
             <span id="part1Date" class="font-black text-brand-700 text-sm">-</span>
           </div>
 
-          <!-- 상호명 [OCR] (정보가 없으면 '정보없음' 표기 및 덜 부각되는 스타일) -->
+          <!-- 상호명 [OCR] -->
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center gap-2">
               <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [OCR]</span>
@@ -199,9 +199,12 @@
               <span id="shopStatusBadgeContainer"></span>
             </div>
             
+            <!-- 상호명 [AI 복원] 텍스트가 명확히 출력되도록 태그 추가 -->
+            <div id="part1ShopName" class="font-black text-brand-700 text-base tracking-tight">-</div>
+
             <div id="shopReasonContainer" class="hidden text-[10.5px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium"></div>
 
-            <!-- 사업자번호/매장주소/전화번호 항목명 변경 및 슬래시 나열, 주소검색 버튼 유지 -->
+            <!-- 사업자번호/매장주소/전화번호 한 줄 나열 및 주소검색 버튼 배치 -->
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-center gap-1 flex-wrap leading-relaxed">
                 <span class="text-slate-500">사업자번호:</span> <span id="part1BizNo" class="text-slate-900">정보없음</span>
@@ -309,7 +312,7 @@
     function clearAnalysisResidue() {
       ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.innerText = (id === 'part1ShopOcr') ? '정보없음' : '-';
+        if(el) el.innerText = (id === 'part1ShopOcr') ? '정보없음' : (id === 'part1ShopName' ? '정보없음' : '-');
       });
       ['part1BizNo', 'part1Address', 'part1Phone'].forEach(id => {
         const el = document.getElementById(id);
