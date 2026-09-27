@@ -365,7 +365,6 @@
     }
 
     function triggerCamera() {
-      // [제로 리셋] 카메라 버튼 누르는 즉시 이전 데이터 및 상호명 잔상 완전 휘발
       clearAnalysisResidue();
       const cam = document.getElementById('cameraInput');
       if(cam) {
@@ -375,7 +374,6 @@
     }
 
     function triggerGallery() {
-      // [제로 리셋] 갤러리 버튼 누르는 즉시 이전 데이터 및 상호명 잔상 완전 휘발
       clearAnalysisResidue();
       const gal = document.getElementById('galleryInput');
       if(gal) {
@@ -388,7 +386,6 @@
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
-      // [이중 안전장치] 파일이 선택되는 순간에도 확실하게 초기화 수행
       clearAnalysisResidue();
       currentSelectedSource = source;
 
@@ -404,7 +401,7 @@
           cropperInstance.destroy();
         }
 
-        // 영역 풀림 방지 및 안정성 옵션 적용
+        // 영역 해제 원천 차단 방어 옵션 및 이벤트 전파 방지 적용
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.95,
@@ -423,7 +420,15 @@
           toggleDragModeOnDblclick: false,
           dragMode: 'none',
           cropBoxMovable: true,
-          cropBoxResizable: true
+          cropBoxResizable: true,
+          ready: function() {
+            const cropperContainer = document.querySelector('.cropper-container');
+            if (cropperContainer) {
+              cropperContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+              }, true);
+            }
+          }
         });
       };
       reader.readAsDataURL(file);
@@ -473,6 +478,10 @@
         alert('영수증 사진을 먼저 첨부해 주세요.');
         return;
       }
+
+      currentShopName = "";
+      currentShopAddress = "";
+
       const analyzeBtn = document.getElementById('analyzeBtn');
       if(analyzeBtn) analyzeBtn.disabled = true;
       
