@@ -365,9 +365,8 @@
     }
 
     function triggerCamera() {
-      // 카메라 촬영 버튼을 누르는 순간 모든 분석 결과 및 이전 영수증 데이터 제로 리셋 (완전 휘발)
+      // [제로 리셋] 카메라 버튼 누르는 즉시 이전 데이터 및 상호명 잔상 완전 휘발
       clearAnalysisResidue();
-      
       const cam = document.getElementById('cameraInput');
       if(cam) {
         cam.value = "";
@@ -376,9 +375,8 @@
     }
 
     function triggerGallery() {
-      // 사진 첨부 버튼을 누르는 순간 모든 분석 결과 및 이전 영수증 데이터 제로 리셋 (완전 휘발)
+      // [제로 리셋] 갤러리 버튼 누르는 즉시 이전 데이터 및 상호명 잔상 완전 휘발
       clearAnalysisResidue();
-      
       const gal = document.getElementById('galleryInput');
       if(gal) {
         gal.value = "";
@@ -390,6 +388,7 @@
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
+      // [이중 안전장치] 파일이 선택되는 순간에도 확실하게 초기화 수행
       clearAnalysisResidue();
       currentSelectedSource = source;
 
@@ -405,9 +404,10 @@
           cropperInstance.destroy();
         }
 
+        // 영역 풀림 방지 및 안정성 옵션 적용
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
-          autoCropArea: 0.92,
+          autoCropArea: 0.95,
           responsive: true,
           restore: false,
           checkCrossOrigin: false,
@@ -421,6 +421,7 @@
           zoomOnTouch: false,
           scalable: false,
           toggleDragModeOnDblclick: false,
+          dragMode: 'none',
           cropBoxMovable: true,
           cropBoxResizable: true
         });
