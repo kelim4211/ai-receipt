@@ -26,16 +26,17 @@ export default async function handler(req, res) {
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
-SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거
+SHOP: 상호명[OCR원본] | 상호명[AI복원] | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거
 ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합 | 할인액 | 최종금액
 ETC: 항목명 | 부호를포함한금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[상호명 유추 및 환각(Hallucination) 차단 절대 규칙]
-1. 영수증 상단에 명확한 공식 상호명이 없다면 상호명은 1차적으로 '정보없음'으로 간주합니다.
-2. 상호명이 없는 경우, 하단 제품 목록에서 **품번, 고유넘버, 제품고유이름 등 특정 브랜드를 유일하게 식별할 수 있는 명확한 고유 정보 1개 이상**을 반드시 발췌하십시오.
-3. 일반 명사(예: '떡볶이')만 보고 가장 대중적인 프랜차이즈(예: '동대문엽기떡볶이')를 임의로 찍어 맞추는 환각 추정을 절대 엄금합니다. '럭키 모짜라이스롤'과 같이 해당 브랜드에서만 사용하는 고유 식별 명사에 집중하여 실제 유통 상호명(예: 명랑핫도그)을 도출하십시오.
-4. 식별된 고유 정보를 바탕으로 상호명이 확정되면 SHOP 첫 번째 필드에 적고, 일곱 번째 필드(상호명발췌근거)에 반드시 **"고유정보 [활용한 고유 제품명 또는 품번]을(를) 근거로 [상호명] 발췌"** 형태로 기재하십시오. 명확한 고유 정보가 없다면 무리하게 유추하지 말고 '정보없음'으로 출력하십시오.
+[상호명 구분 및 고유정보 기반 유추 엄격 규칙]
+1. 상호명[OCR원본]: 영수증 상단에 인쇄된 공식 상호명이 시각적으로 명확히 보일 때만 기재하십시오. 없다면 반드시 '정보없음'으로 고정하십시오. (절대 여기서 유추 금지)
+2. 상호명[AI복원]: 
+   - 상호명[OCR원본]이 있는 경우 동일하게 기재합니다.
+   - 상호명[OCR원본]이 '정보없음'인 경우, 하단 제품의 **품번, 고유넘버, 제품고유이름 등 특정 브랜드를 식별할 수 있는 명확한 고유 정보 1개 이상**을 반드시 발췌하여 인터넷 검색 기반 실제 상호명을 유추해 이곳에 기재하십시오.
+3. 상호명발췌근거: 고유 정보를 기반으로 유추한 경우 "고유정보 [활용한 고유 제품명 또는 품번]을(를) 근거로 [상호명] 발췌" 형태로 여덟 번째 필드에 작성하십시오. 명확한 정보가 없다면 '정보없음'으로 기재하십시오.
 
 [ETC 항목 자율 추출 원칙 (기호/용어 범용 대응)]
 - 영수증에 인쇄된 내용 중 품목(ITEM)과 최종 결제총액(TOTAL)을 제외한 나머지 모든 추가 요금, 수수료, 배달팁, 각종 할인/차감/쿠폰 항목은 명칭이나 기호에 구애받지 말고 부호를 포함하여 무조건 ETC 형식으로 빠짐없이 추출하십시오.
@@ -63,7 +64,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증을 분석하되, 상호명이 없는 경우 일반 명사로 브랜드를 짐작하는 환각을 배제하고 반드시 제품의 고유넘버나 고유이름 등 1개 이상의 명확한 고유 정보를 근거로 삼아 상호명을 정확히 유추 발췌하시오. 또한 모든 추가 요금/할인(ETC)과 최종 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
+              { text: "영수증을 분석하되, OCR원본과 AI복원 상호명을 철저히 분리하고, 상호명이 시각적으로 없으면 OCR은 '정보없음'으로 둔 채 하단 고유제품명을 근거로 실제 상호명을 AI복원에 기재하시오. 또한 모든 추가 요금/할인(ETC)과 최종 총액(TOTAL)을 정확히 분석하여 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -121,6 +122,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       if (trimmed.startsWith('SHOP:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         let rawShopOcr = parts[0] || '정보없음';
+        let rawShopAi = parts[1] || '정보없음';
         
         let isOcrValid = true;
         if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) {
@@ -128,30 +130,34 @@ TOTAL: 영수증에_인쇄된_최종결제총액
           isOcrValid = false;
         }
 
+        // 이제 상호명[OCR]에는 무조건 시각적으로 인쇄된 것만 들어갑니다.
         resultData.shopOcr = rawShopOcr;
 
+        let rawReason = parts[7] || '';
+        
         if (!isOcrValid) {
-          resultData.shopName = '정보없음';
-          resultData.shopConfidence = 'none';
-          resultData.shopReason = '';
-        } else {
-          let rawReason = parts[6] || '';
-          if (rawReason && !rawReason.includes('공식 상호명 확인')) {
-            resultData.shopName = rawShopOcr;
+          // OCR이 비어있을 때 AI가 유추한 상호명이 있다면 채택
+          if (rawShopAi && !rawShopAi.includes('정보없음') && rawShopAi.length >= 2) {
+            resultData.shopName = rawShopAi;
             resultData.shopConfidence = 'estimated';
             resultData.shopReason = rawReason;
           } else {
-            resultData.shopName = rawShopOcr;
-            resultData.shopConfidence = 'official';
+            resultData.shopName = '정보없음';
+            resultData.shopConfidence = 'none';
             resultData.shopReason = '';
           }
+        } else {
+          // OCR이 유효하면 공식 상호명으로 처리
+          resultData.shopName = rawShopOcr;
+          resultData.shopConfidence = 'official';
+          resultData.shopReason = '';
         }
 
-        resultData.shopIndustry = parts[1] || '';
-        resultData.date = parts[2] || '미확인';
-        resultData.bizNo = parts[3] || '정보없음';
-        resultData.phone = parts[4] || '정보없음';
-        resultData.address = parts[5] || '정보없음';
+        resultData.shopIndustry = parts[2] || '';
+        resultData.date = parts[3] || '미확인';
+        resultData.bizNo = parts[4] || '정보없음';
+        resultData.phone = parts[5] || '정보없음';
+        resultData.address = parts[6] || '정보없음';
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
