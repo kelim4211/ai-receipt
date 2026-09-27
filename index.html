@@ -294,7 +294,6 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', options);
     }
 
-    // 제품검색 URL 생성 시에만 다이소 등 유통사 브랜드 포함, 편의점 및 일반 소매점은 상호명 배제
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = "";
@@ -352,13 +351,41 @@
     }
 
     function triggerCamera() {
+      clearAnalysisResidue();
+      activeReceiptBase64 = null;
+      
+      const img = document.getElementById('uploadedReceiptImg');
+      if(img) {
+        img.classList.add('hidden');
+        img.src = "";
+      }
+      const previewCont = document.getElementById('receiptPreviewContainer');
+      if(previewCont) previewCont.classList.remove('hidden');
+
       const cam = document.getElementById('cameraInput');
-      if(cam) cam.click();
+      if(cam) {
+        cam.value = "";
+        cam.click();
+      }
     }
 
     function triggerGallery() {
+      clearAnalysisResidue();
+      activeReceiptBase64 = null;
+      
+      const img = document.getElementById('uploadedReceiptImg');
+      if(img) {
+        img.classList.add('hidden');
+        img.src = "";
+      }
+      const previewCont = document.getElementById('receiptPreviewContainer');
+      if(previewCont) previewCont.classList.remove('hidden');
+
       const gal = document.getElementById('galleryInput');
-      if(gal) gal.click();
+      if(gal) {
+        gal.value = "";
+        gal.click();
+      }
     }
 
     function handleImageSelected(event, source) {
@@ -389,7 +416,6 @@
           cropperInstance.destroy();
         }
 
-        // 안정성 강화된 Cropper 설정 (더블클릭 영역 해제 방지 및 터치 최적화)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.92,
@@ -495,6 +521,13 @@
     function renderAnalysisUI(data) {
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       
+      // 분석 완료 시 상태메시지 배지를 '분석완료'로 변경
+      const storeOcrBadge = document.getElementById('storeOcrBadge');
+      if(storeOcrBadge) {
+        storeOcrBadge.innerText = "분석완료";
+        storeOcrBadge.className = "text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full border border-emerald-700 shadow-xs";
+      }
+
       let rawShopOcr = data.shopOcr || '정보없음';
       let cleanOcr = (rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2 || rawShopOcr.includes('추정')) ? '정보없음' : rawShopOcr;
 
