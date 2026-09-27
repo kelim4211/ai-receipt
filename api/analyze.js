@@ -28,19 +28,19 @@ export default async function handler(req, res) {
 [출력 양식]
 SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
 ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합(가장오른쪽총액숫자) | 할인액 | 최종금액
-ETC: 항목명 | 금액
+ETC: 항목명 | 부호를포함한금액 (예: ETC: 배달팁 | 1900 또는 ETC: 배달팁할인 | -1900)
 TOTAL: 영수증에_인쇄된_최종결제총액
 
 [상호명 [OCR] 절대 규칙 (수정불가)]
 - 영수증 상단 원본 이미지에 명확한 상호명 텍스트가 인쇄되어 있는 경우에만 SHOP의 첫 번째 필드에 해당 원본 상호명을 적으십시오.
 - 영수증에 상호명이 존재하지 않거나 잘려 있는 경우, SHOP의 첫 번째 필드는 무조건 '정보없음'이라고 적으십시오.
 
+[ETC 항목 자율 추출 원칙 (기호/용어 범용 대응)]
+- 영수증에 인쇄된 내용 중 품목(ITEM)과 최종 결제총액(TOTAL)을 제외한 나머지 모든 추가 요금, 수수료, 배달팁, 그리고 각종 할인/차감/쿠폰 항목은 명칭이나 기호에 구애받지 말고 그 성격에 맞춰 부호(+ 또는 -)를 포함하여 무조건 ETC 형식으로 빠짐없이 추출하십시오.
+
 [제품검색 기반 최고 정확도 명칭 발췌 절대 규칙]
 - ITEM의 두 번째 필드(정밀복원제품명)를 복원할 때, 영수증에 없는 제조사명을 임의로 지어내어 추가하는 행위를 절대 금지합니다.
-- 대신 실제 인터넷 쇼핑 및 유통 데이터(다이소몰 등)에서 해당 품목의 **가장 정확도와 일치도가 높은 실제 표준 상품명**을 매칭하여 발췌하십시오.
-
-[품목 금액(단가*수량) 추출 엄격 규칙]
-- ITEM 양식의 세 번째 필드에는 반드시 해당 품목 행의 가장 오른쪽에 인쇄된 최종 합계 금액 숫자를 정확히 기재하십시오.
+- 대신 실제 인터넷 쇼핑 및 유통 데이터에서 해당 품목의 가장 정확도와 일치도가 높은 실제 표준 상품명을 매칭하여 발췌하십시오.
 
 [제외 항목 엄격 규칙]
 - 영수증 하단의 '과세', '부가세' 항목은 정산 및 ETC 분석 대상에서 절대 포함하지 말고 완전히 제외하십시오.`;
@@ -61,7 +61,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증을 분석하되, 제품검색 결과 및 유통 데이터 기반으로 가장 일치도가 높은 정확한 표준 상품명을 발췌하여 복원하고, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
+              { text: "영수증을 분석하되, 품목과 최종 총액을 제외한 모든 추가 요금 및 할인/차감 항목(ETC)을 명칭과 기호에 구애받지 말고 자율적으로 빠짐없이 추출하고, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -98,7 +98,9 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       address: '정보없음',
       overallElements: [],
       products: [],
-      receiptTotal: 0
+      receiptTotal: 0,
+      verificationStatus: 'NORMAL', // 이중 검증 상태값
+      verificationMessage: ''
     };
 
     const cleanStr = (str) => (str || '').replace(/^["']|["']$/g, '').trim();
@@ -126,7 +128,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
         resultData.shopOcr = rawShopOcr;
 
-        // [수정 완료] 상호명이 불분명할 때 다이소로 강제 할당하던 로직을 완전히 제거하고 '정보없음'으로 처리
         if (!isOcrValid) {
           resultData.shopName = '정보없음';
           resultData.shopConfidence = 'none';
@@ -158,54 +159,69 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         }
       } else if (trimmed.startsWith('TOTAL:')) {
         resultData.receiptTotal = Number(cleanNum(trimmed.substring(6), '0'));
-      } else if (trimmed.startsWith('ETC:') || /할인|DC|차감/i.test(trimmed)) {
+      } else if (trimmed.startsWith('ETC:') || /[-+]?\d/.test(trimmed)) {
         if (/과세|부가세|세액|면세/i.test(trimmed)) {
           continue;
         }
 
-        let name = "할인";
+        let name = "추가/할인 항목";
         let amountStr = "0";
 
         if (trimmed.startsWith('ETC:')) {
           const parts = trimmed.substring(4).split('|').map(cleanStr);
-          name = parts[0].replace(/^[*\s]+/, '') || '할인';
+          name = parts[0].replace(/^[*\s]+/, '') || '추가/할인 항목';
           if (/과세|부가세|세액|면세/i.test(name)) continue;
           amountStr = cleanNum(parts[1], '0');
         } else {
-          const matchNums = trimmed.match(/\d[\d,.]*/g);
+          const matchNums = trimmed.match(/-?\d[\d,.]*/g);
           if (matchNums && matchNums.length > 0) {
             amountStr = cleanNum(matchNums[matchNums.length - 1], '0');
-            name = trimmed.replace(/[\d,.-]+/g, '').replace(/^[*\s]+/, '').trim() || "결제 할인";
+            name = trimmed.replace(/[-?\d,.-]+/g, '').replace(/^[*\s]+/, '').trim() || "추가/할인 항목";
           }
         }
 
-        const amt = Number(amountStr);
-        if (amt > 0 && !resultData.overallElements.some(el => el.name === name)) {
-          resultData.overallElements.push({
-            name: name,
-            amount: String(amt)
-          });
+        let isNegative = amountStr.includes('-') || trimmed.includes('-') || /할인|DC|차감|쿠폰|마이너스/i.test(name);
+        let cleanAmountVal = amountStr.replace(/[^0-9]/g, '');
+        let amt = Number(cleanAmountVal);
+
+        if (amt > 0) {
+          let finalAmountFormatted = isNegative ? `-${amt}` : String(amt);
+          if (!resultData.overallElements.some(el => el.name === name)) {
+            resultData.overallElements.push({
+              name: name,
+              amount: finalAmountFormatted
+            });
+          }
         }
       }
     }
 
+    // ==========================================
+    // 🔍 [이중 검증 장치 (Double Verification Engine)]
+    // ==========================================
     const sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
     const sumOverallEtc = resultData.overallElements.reduce((acc, el) => acc + Number(el.amount), 0);
-    const calculatedTotal = sumProductsFinal - sumOverallEtc;
+    const calculatedTotal = sumProductsFinal + sumOverallEtc;
 
-    if (resultData.receiptTotal > 0 && calculatedTotal !== resultData.receiptTotal) {
-      const discrepancy = calculatedTotal - resultData.receiptTotal;
-      if (discrepancy > 0) {
-        const existingDiscount = resultData.overallElements.find(el => el.name.includes('할인') || el.name.includes('DC') || el.name.includes('차감'));
-        if (existingDiscount) {
-          existingDiscount.amount = String(Number(existingDiscount.amount) + discrepancy);
-        } else {
-          resultData.overallElements.push({
-            name: "결제 할인",
-            amount: String(discrepancy)
-          });
-        }
+    if (resultData.receiptTotal > 0) {
+      const discrepancy = resultData.receiptTotal - calculatedTotal;
+      
+      if (discrepancy === 0) {
+        resultData.verificationStatus = 'MATCHED';
+        resultData.verificationMessage = '금액 이중 검증 완료: 품목 및 추가/할인 합계가 영수증 최종 결제 총액과 완벽히 일치합니다.';
+      } else {
+        // 오차가 발생한 경우 자동 보정 및 불일치 경고 메타데이터 부여
+        resultData.verificationStatus = 'DISCREPANCY_AUTO_CORRECTED';
+        resultData.verificationMessage = `금액 오차 감지 및 자동 보정됨 (차액: ${discrepancy}원)`;
+        
+        resultData.overallElements.push({
+          name: discrepancy < 0 ? "누락 할인/차감 보정" : "누락 추가 요금 보정",
+          amount: String(discrepancy)
+        });
       }
+    } else {
+      resultData.verificationStatus = 'NO_TOTAL_FOUND';
+      resultData.verificationMessage = '영수증 내 최종 결제 총액 인식 불가로 자체 품목 합계로 대체합니다.';
     }
 
     return res.status(200).json(resultData);
