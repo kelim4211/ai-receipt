@@ -338,7 +338,10 @@
       }
 
       const badge = document.getElementById('storeOcrBadge');
-      if(badge) badge.innerText = "판독 대기";
+      if(badge) {
+        badge.innerText = "판독 대기";
+        badge.className = "text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200";
+      }
       
       const countBadge = document.getElementById('productCountBadge');
       if(countBadge) countBadge.innerText = "총 0개 품목";
@@ -348,12 +351,10 @@
       
       const summarySec = document.getElementById('receiptSummarySection');
       if(summarySec) summarySec.classList.add('hidden');
-    }
 
-    function triggerCamera() {
-      clearAnalysisResidue();
-      activeReceiptBase64 = null;
-      
+      const scanBadge = document.getElementById('scanStatusBadge');
+      if(scanBadge) scanBadge.innerText = '● 대기 중 (0% 초기화됨)';
+
       const img = document.getElementById('uploadedReceiptImg');
       if(img) {
         img.classList.add('hidden');
@@ -361,7 +362,12 @@
       }
       const previewCont = document.getElementById('receiptPreviewContainer');
       if(previewCont) previewCont.classList.remove('hidden');
+    }
 
+    function triggerCamera() {
+      // 카메라 촬영 버튼을 누르는 순간 모든 분석 결과 및 이전 영수증 데이터 제로 리셋 (완전 휘발)
+      clearAnalysisResidue();
+      
       const cam = document.getElementById('cameraInput');
       if(cam) {
         cam.value = "";
@@ -370,17 +376,9 @@
     }
 
     function triggerGallery() {
+      // 사진 첨부 버튼을 누르는 순간 모든 분석 결과 및 이전 영수증 데이터 제로 리셋 (완전 휘발)
       clearAnalysisResidue();
-      activeReceiptBase64 = null;
       
-      const img = document.getElementById('uploadedReceiptImg');
-      if(img) {
-        img.classList.add('hidden');
-        img.src = "";
-      }
-      const previewCont = document.getElementById('receiptPreviewContainer');
-      if(previewCont) previewCont.classList.remove('hidden');
-
       const gal = document.getElementById('galleryInput');
       if(gal) {
         gal.value = "";
@@ -393,15 +391,6 @@
       if (!file) return;
 
       clearAnalysisResidue();
-      
-      const img = document.getElementById('uploadedReceiptImg');
-      if(img) {
-        img.classList.add('hidden');
-        img.src = "";
-      }
-      const previewCont = document.getElementById('receiptPreviewContainer');
-      if(previewCont) previewCont.classList.remove('hidden');
-
       currentSelectedSource = source;
 
       const reader = new FileReader();
@@ -521,7 +510,6 @@
     function renderAnalysisUI(data) {
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       
-      // 분석 완료 시 상태메시지 배지를 '분석완료'로 변경
       const storeOcrBadge = document.getElementById('storeOcrBadge');
       if(storeOcrBadge) {
         storeOcrBadge.innerText = "분석완료";
@@ -719,14 +707,6 @@
     
     function resetSystem() { 
       clearAnalysisResidue(); 
-      activeReceiptBase64 = null; 
-      const img = document.getElementById('uploadedReceiptImg');
-      if(img) {
-        img.classList.add('hidden'); 
-        img.src = ""; 
-      }
-      const previewCont = document.getElementById('receiptPreviewContainer');
-      if(previewCont) previewCont.classList.remove('hidden');
     }
     
     function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
