@@ -37,7 +37,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
 [제품검색 기반 최고 정확도 명칭 발췌 절대 규칙]
 - ITEM의 두 번째 필드(정밀복원제품명)를 복원할 때, 영수증에 없는 제조사명을 임의로 지어내어 추가하는 행위를 절대 금지합니다.
-- 대신 실제 인터넷 쇼핑 및 유통 데이터(다이소몰 등)에서 해당 품목의 **가장 정확도와 일치도가 높은 실제 표준 상품명**을 매칭하여 발췌하십시오. (예: 영수증의 '글라스데코12P(5000)' -> '글라스데코 12P')
+- 대신 실제 인터넷 쇼핑 및 유통 데이터(다이소몰 등)에서 해당 품목의 **가장 정확도와 일치도가 높은 실제 표준 상품명**을 매칭하여 발췌하십시오.
 
 [품목 금액(단가*수량) 추출 엄격 규칙]
 - ITEM 양식의 세 번째 필드에는 반드시 해당 품목 행의 가장 오른쪽에 인쇄된 최종 합계 금액 숫자를 정확히 기재하십시오.
@@ -126,10 +126,11 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
         resultData.shopOcr = rawShopOcr;
 
+        // [수정 완료] 상호명이 불분명할 때 다이소로 강제 할당하던 로직을 완전히 제거하고 '정보없음'으로 처리
         if (!isOcrValid) {
-          resultData.shopName = '다이소 (추정)';
-          resultData.shopConfidence = 'estimated';
-          resultData.shopReason = '품번 패턴 및 천원 단위 균일가 상품군 특징 기반 유추';
+          resultData.shopName = '정보없음';
+          resultData.shopConfidence = 'none';
+          resultData.shopReason = '';
         } else {
           resultData.shopName = rawShopOcr;
           resultData.shopConfidence = 'official';
