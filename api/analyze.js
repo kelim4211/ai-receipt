@@ -26,14 +26,16 @@ export default async function handler(req, res) {
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
-SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소
+SHOP: 상호명 | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 유추근거(상호명이 명확하지 않을 때 품목의 고유 제품명, 품번, 브랜드 특징 등을 분석한 한 줄 근거. 명확한 공식 상호명인 경우 '공식 상호명 확인'으로 기재)
 ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합(가장오른쪽총액숫자) | 할인액 | 최종금액
 ETC: 항목명 | 부호를포함한금액 (예: ETC: 배달팁 | 1900 또는 ETC: 배달팁할인 | -1900)
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[상호명 [OCR] 절대 규칙 (수정불가)]
-- 영수증 상단 원본 이미지에 명확한 상호명 텍스트가 인쇄되어 있는 경우에만 SHOP의 첫 번째 필드에 해당 원본 상호명을 적으십시오.
-- 영수증에 상호명이 존재하지 않거나 잘려 있는 경우, SHOP의 첫 번째 필드는 무조건 '정보없음'이라고 적으십시오.
+[상호명 [OCR] 및 지능형 유추 절대 규칙]
+1. 공식 상호명: 영수증 상단 원본 이미지에 명확한 상호명 텍스트가 인쇄되어 있는 경우 SHOP의 첫 번째 필드에 해당 상호명을 적으십시오.
+2. 지능형 상호명 역추적 유추: 
+   - 영수증 상단에 상호명이 없거나 잘려 있더라도, 하단 품목들 중에 **특정 브랜드/프랜차이즈의 고유 제품명, 시그니처 메뉴, PB 상품, 독점 품번 패턴, 혹은 제품의 특유한 유통 특징**이 포함되어 있다면 이를 종합하여 상호명을 적극적으로 추정하십시오.
+   - 단, 유추한 경우 SHOP의 마지막 일곱 번째 필드에 반드시 **유추 근거가 되는 한 문장(예: 품목 내 특정 브랜드 고유 제품명 및 품번 패턴 기반 역추적 유추)**을 명시하십시오.
 
 [ETC 항목 자율 추출 원칙 (기호/용어 범용 대응)]
 - 영수증에 인쇄된 내용 중 품목(ITEM)과 최종 결제총액(TOTAL)을 제외한 나머지 모든 추가 요금, 수수료, 배달팁, 그리고 각종 할인/차감/쿠폰 항목은 명칭이나 기호에 구애받지 말고 그 성격에 맞춰 부호(+ 또는 -)를 포함하여 무조건 ETC 형식으로 빠짐없이 추출하십시오.
@@ -61,7 +63,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         contents: [
           {
             parts: [
-              { text: "영수증을 분석하되, 품목과 최종 총액을 제외한 모든 추가 요금 및 할인/차감 항목(ETC)을 명칭과 기호에 구애받지 말고 자율적으로 빠짐없이 추출하고, 최종 결제 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
+              { text: "영수증을 분석하되, 상호명이 불분명할 경우 품목의 고유 제품명, 품번, 브랜드 특징 등 모든 고유 정보를 활용해 상호명을 지능적으로 유추하고 일곱 번째 필드에 유추 근거를 한 문장으로 작성하시오. 또한 모든 추가 요금/할인(ETC)과 최종 총액(TOTAL)을 정확히 분석하여 지정된 양식으로 출력하시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -99,7 +101,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       overallElements: [],
       products: [],
       receiptTotal: 0,
-      verificationStatus: 'NORMAL', // 이중 검증 상태값
+      verificationStatus: 'NORMAL',
       verificationMessage: ''
     };
 
@@ -121,7 +123,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         let rawShopOcr = parts[0] || '정보없음';
         
         let isOcrValid = true;
-        if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2 || rawShopOcr.includes('추정')) {
+        if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) {
           rawShopOcr = '정보없음';
           isOcrValid = false;
         }
@@ -133,8 +135,17 @@ TOTAL: 영수증에_인쇄된_최종결제총액
           resultData.shopConfidence = 'none';
           resultData.shopReason = '';
         } else {
-          resultData.shopName = rawShopOcr;
-          resultData.shopConfidence = 'official';
+          // 일곱 번째 필드(parts[6])에 담긴 유추 근거 파싱 반영
+          let rawReason = parts[6] || '';
+          if (rawReason && !rawReason.includes('공식 상호명 확인')) {
+            resultData.shopName = rawShopOcr;
+            resultData.shopConfidence = 'estimated';
+            resultData.shopReason = rawReason;
+          } else {
+            resultData.shopName = rawShopOcr;
+            resultData.shopConfidence = 'official';
+            resultData.shopReason = '';
+          }
         }
 
         resultData.shopIndustry = parts[1] || '';
@@ -210,7 +221,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         resultData.verificationStatus = 'MATCHED';
         resultData.verificationMessage = '금액 이중 검증 완료: 품목 및 추가/할인 합계가 영수증 최종 결제 총액과 완벽히 일치합니다.';
       } else {
-        // 오차가 발생한 경우 자동 보정 및 불일치 경고 메타데이터 부여
         resultData.verificationStatus = 'DISCREPANCY_AUTO_CORRECTED';
         resultData.verificationMessage = `금액 오차 감지 및 자동 보정됨 (차액: ${discrepancy}원)`;
         
