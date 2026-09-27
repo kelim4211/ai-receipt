@@ -480,7 +480,6 @@
         return;
       }
 
-      // [핵심 추가] 분석 실행 버튼을 누르는 순간 기존 상호명 잔상을 완벽히 지우고 '판독 중 / 정보없음' 상태로 즉시 강제 리셋
       currentShopName = "";
       currentShopAddress = "";
       const storeOcrBadge = document.getElementById('storeOcrBadge');
@@ -533,18 +532,18 @@
         try {
           result = JSON.parse(textResult);
         } catch (err) {
-          throw new Error('서버 응답을 처리하는 중 오류가 발생했습니다.');
+          throw new Error(`서버 응답 파싱 실패: ${textResult.substring(0, 80)}`);
         }
 
         if (!response.ok) {
-          throw new Error(result.error || '서버 통신 중 오류가 발생했습니다.');
+          throw new Error(result.error || `서버 통신 오류 (상태 코드: ${response.status})`);
         }
 
         if(scannerLine) scannerLine.classList.add('hidden');
         renderAnalysisUI(result);
       } catch (e) {
         if(scannerLine) scannerLine.classList.add('hidden');
-        alert(e.message || '영수증 판독 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        alert(`[분석 오류 발생]\n${e.message}`);
         clearAnalysisResidue();
       } finally {
         if(analyzeBtn) analyzeBtn.disabled = false;
@@ -561,7 +560,7 @@
       }
 
       let rawShopOcr = data.shopOcr || '정보없음';
-      let cleanOcr = (rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2 || rawShopOcr.includes('추정')) ? '정보없음' : rawShopOcr;
+      let cleanOcr = (rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) ? '정보없음' : rawShopOcr;
 
       let rawShopName = data.shopName || '정보없음';
       currentShopName = rawShopName.replace(/\s*\(추정\)/g, "").replace(/AI 추정/g, "").replace(/\(추정\)/g, "").trim();
@@ -681,24 +680,17 @@
           summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목별 할인액 합계</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
         }
 
-        let calculatedPayment = totalCalculatedProductsAmount;
-
         overallElements.forEach(el => {
-          let rawAmountStr = String(el.amount || '0');
-          let isDiscount = rawAmountStr.includes('-') || String(el.name || '').includes('할인') || String(el.name || '').includes('DC');
-          let amt = Number(rawAmountStr.replace(/[^0-9]/g, ''));
-          
-          if (isDiscount) {
-            calculatedPayment -= amt;
-            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>-${amt.toLocaleString()}원</span></div>`;
+          let amtVal = Number(el.amount);
+          if (amtVal < 0) {
+            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>${amtVal.toLocaleString()}원</span></div>`;
           } else {
-            calculatedPayment += amt;
-            summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>${el.name}</span><span>+${amt.toLocaleString()}원</span></div>`;
+            summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>${el.name}</span><span>+${amtVal.toLocaleString()}원</span></div>`;
           }
         });
 
         summaryContainer.innerHTML = summaryHTML;
-        setTxt('summaryFinalPrice', calculatedPayment.toLocaleString() + '원');
+        setTxt('summaryFinalPrice', (data.receiptTotal > 0 ? data.receiptTotal : (totalCalculatedProductsAmount + sumOverallEtc)).toLocaleString() + '원');
       }
       
       const summarySec = document.getElementById('receiptSummarySection');
