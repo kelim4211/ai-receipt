@@ -401,7 +401,6 @@
           cropperInstance.destroy();
         }
 
-        // [최종 수정] 크롭 박스가 점으로 찌그러지거나 사라지지 않도록 최소 크기(minCropBoxWidth/Height) 지정 및 영역 방어 강화
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.95,
@@ -418,10 +417,10 @@
           zoomOnTouch: false,
           scalable: false,
           toggleDragModeOnDblclick: false,
-          dragMode: 'crop',          // 'none' 대신 'crop'으로 설정하여 모서리 조절 시 안정성 확보
+          dragMode: 'crop',
           cropBoxMovable: true,
           cropBoxResizable: true,
-          minCropBoxWidth: 120,      // 상자가 이 이하로 작아져서 점처럼 찌그러지는 것 방지
+          minCropBoxWidth: 120,
           minCropBoxHeight: 120,
           ready: function() {
             const cropperContainer = document.querySelector('.cropper-container');
@@ -481,8 +480,40 @@
         return;
       }
 
+      // [핵심 추가] 분석 실행 버튼을 누르는 순간 기존 상호명 잔상을 완벽히 지우고 '판독 중 / 정보없음' 상태로 즉시 강제 리셋
       currentShopName = "";
       currentShopAddress = "";
+      const storeOcrBadge = document.getElementById('storeOcrBadge');
+      if(storeOcrBadge) {
+        storeOcrBadge.innerText = "판독 중...";
+        storeOcrBadge.className = "text-[10px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full border border-amber-600 shadow-xs";
+      }
+      document.getElementById('part1ShopOcr').innerText = '정보없음';
+      document.getElementById('part1ShopName').innerText = '정보없음';
+      document.getElementById('part1Date').innerText = '-';
+      document.getElementById('part1BizNo').innerText = '정보없음';
+      document.getElementById('part1Address').innerText = '정보없음';
+      document.getElementById('part1Phone').innerText = '정보없음';
+      
+      const copyBtn = document.getElementById('copyAddressBtn');
+      if(copyBtn) copyBtn.classList.add('hidden');
+      
+      const badgeCont = document.getElementById('shopStatusBadgeContainer');
+      if(badgeCont) badgeCont.innerHTML = '';
+      
+      const reasonCont = document.getElementById('shopReasonContainer');
+      if(reasonCont) {
+        reasonCont.innerText = '';
+        reasonCont.classList.add('hidden');
+      }
+
+      const cardListContainer = document.getElementById('productCardList');
+      if(cardListContainer) {
+        cardListContainer.innerHTML = '<div class="p-8 text-center text-slate-400 font-bold text-xs"><i class="fa-solid fa-spinner fa-spin text-2xl text-brand-600 mb-2"></i><p>영수증 품목을 정밀 분석 중입니다...</p></div>';
+      }
+      
+      const summarySec = document.getElementById('receiptSummarySection');
+      if(summarySec) summarySec.classList.add('hidden');
 
       const analyzeBtn = document.getElementById('analyzeBtn');
       if(analyzeBtn) analyzeBtn.disabled = true;
@@ -514,6 +545,7 @@
       } catch (e) {
         if(scannerLine) scannerLine.classList.add('hidden');
         alert(e.message || '영수증 판독 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        clearAnalysisResidue();
       } finally {
         if(analyzeBtn) analyzeBtn.disabled = false;
       }
