@@ -32,21 +32,21 @@
     }
     
     .cropper-point {
-      width: 14px !important;
-      height: 14px !important;
+      width: 16px !important;
+      height: 16px !important;
       background-color: #2563eb !important;
       opacity: 0.95 !important;
-      border: 1.5px solid white !important;
+      border: 2px solid white !important;
       border-radius: 50% !important;
     }
-    .cropper-point.point-n { top: -7px !important; }
-    .cropper-point.point-s { bottom: -7px !important; }
-    .cropper-point.point-w { left: -7px !important; }
-    .cropper-point.point-e { right: -7px !important; }
-    .cropper-point.point-nw { top: -7px !important; left: -7px !important; }
-    .cropper-point.point-ne { top: -7px !important; right: -7px !important; }
-    .cropper-point.point-sw { bottom: -7px !important; left: -7px !important; }
-    .cropper-point.point-se { bottom: -7px !important; right: -7px !important; width: 16px !important; height: 16px !important; }
+    .cropper-point.point-n { top: -8px !important; }
+    .cropper-point.point-s { bottom: -8px !important; }
+    .cropper-point.point-w { left: -8px !important; }
+    .cropper-point.point-e { right: -8px !important; }
+    .cropper-point.point-nw { top: -8px !important; left: -8px !important; }
+    .cropper-point.point-ne { top: -8px !important; right: -8px !important; }
+    .cropper-point.point-sw { bottom: -8px !important; left: -8px !important; }
+    .cropper-point.point-se { bottom: -8px !important; right: -8px !important; width: 18px !important; height: 18px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -401,7 +401,7 @@
           cropperInstance.destroy();
         }
 
-        // 영역 해제 원천 차단 방어 옵션 및 이벤트 전파 방지 적용
+        // [최종 수정] 크롭 박스가 점으로 찌그러지거나 사라지지 않도록 최소 크기(minCropBoxWidth/Height) 지정 및 영역 방어 강화
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
           autoCropArea: 0.95,
@@ -418,9 +418,11 @@
           zoomOnTouch: false,
           scalable: false,
           toggleDragModeOnDblclick: false,
-          dragMode: 'none',
+          dragMode: 'crop',          // 'none' 대신 'crop'으로 설정하여 모서리 조절 시 안정성 확보
           cropBoxMovable: true,
           cropBoxResizable: true,
+          minCropBoxWidth: 120,      // 상자가 이 이하로 작아져서 점처럼 찌그러지는 것 방지
+          minCropBoxHeight: 120,
           ready: function() {
             const cropperContainer = document.querySelector('.cropper-container');
             if (cropperContainer) {
