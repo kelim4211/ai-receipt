@@ -204,7 +204,6 @@
             
             <div id="shopReasonContainer" class="hidden text-[10.5px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium"></div>
 
-            <!-- 사업자번호/매장주소/전화번호 한 줄 나열 및 주소검색 버튼 유지 -->
             <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
               <div class="flex items-center gap-1 flex-wrap leading-relaxed">
                 <span class="text-slate-500">사업자번호:</span> <span id="part1BizNo" class="text-slate-900">정보없음</span>
@@ -638,6 +637,15 @@
         const resolvedQuery = item.productAi || item.productOcr;
         const searchURL = getSmartSearchURL(resolvedQuery, currentShopName);
 
+        // 할인 UI 렌더링 방식 변경
+        let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
+        if (numDisc > 0 && item.discountName) {
+            discountDisplay = `
+                <span class="font-black text-sm text-rose-600 leading-none mt-1">-${numDisc.toLocaleString()}</span>
+                <span class="block text-[8.5px] text-rose-500 font-bold truncate w-full px-1 mt-1 leading-tight">(${item.discountName})</span>
+            `;
+        }
+
         const card = document.createElement('div');
         card.className = "bg-white border-2 border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-sm text-xs";
         
@@ -656,9 +664,9 @@
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
-            <div><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${originalPrice.toLocaleString()}</span></div>
-            <div class="border-x"><span class="text-[9px] text-slate-500 block">할인액</span><span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span></div>
-            <div><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${finalPrice.toLocaleString()}</span></div>
+            <div class="flex flex-col justify-center"><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${originalPrice.toLocaleString()}</span></div>
+            <div class="border-x flex flex-col items-center justify-center overflow-hidden"><span class="text-[9px] text-slate-500 block shrink-0">할인액</span>${discountDisplay}</div>
+            <div class="flex flex-col justify-center"><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${finalPrice.toLocaleString()}</span></div>
           </div>
         `;
 
@@ -676,18 +684,24 @@
       if(summaryContainer) {
         let summaryHTML = `<div class="flex justify-between font-bold"><span>품목 정가 합계</span><span>${totalOriginalSum.toLocaleString()}원</span></div>`;
         
+        // 품목에 종속된 할인들을 하나로 묶어서 단일 항목으로 노출
         if (totalProductDiscountSum > 0) {
-          summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목별 할인액 합계</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
+          summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목 할인 총액</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
         }
 
-        overallElements.forEach(el => {
-          let amtVal = Number(el.amount);
-          if (amtVal < 0) {
-            summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>${amtVal.toLocaleString()}원</span></div>`;
-          } else {
-            summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>${el.name}</span><span>+${amtVal.toLocaleString()}원</span></div>`;
-          }
-        });
+        // 전체 단위 영수증 할인/할증 내역 (이중 표기 방지)
+        if (overallElements.length === 0) {
+           summaryHTML += `<div class="flex justify-between font-bold text-slate-500"><span>└ 영수증 전체 할인</span><span>0원</span></div>`;
+        } else {
+            overallElements.forEach(el => {
+              let amtVal = Number(el.amount);
+              if (amtVal < 0) {
+                summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>${amtVal.toLocaleString()}원</span></div>`;
+              } else {
+                summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>└ ${el.name}</span><span>+${amtVal.toLocaleString()}원</span></div>`;
+              }
+            });
+        }
 
         summaryContainer.innerHTML = summaryHTML;
         setTxt('summaryFinalPrice', (data.receiptTotal > 0 ? data.receiptTotal : (totalCalculatedProductsAmount + sumOverallEtc)).toLocaleString() + '원');
