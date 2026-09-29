@@ -637,7 +637,6 @@
         const resolvedQuery = item.productAi || item.productOcr;
         const searchURL = getSmartSearchURL(resolvedQuery, currentShopName);
 
-        // 할인 UI 렌더링 방식 변경
         let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
         if (numDisc > 0 && item.discountName) {
             discountDisplay = `
@@ -684,17 +683,15 @@
       if(summaryContainer) {
         let summaryHTML = `<div class="flex justify-between font-bold"><span>품목 정가 합계</span><span>${totalOriginalSum.toLocaleString()}원</span></div>`;
         
-        // 품목에 종속된 할인들을 하나로 묶어서 단일 항목으로 노출
         if (totalProductDiscountSum > 0) {
           summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목 할인 총액</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
         }
 
-        // 전체 단위 영수증 할인/할증 내역 (이중 표기 방지)
         if (overallElements.length === 0) {
            summaryHTML += `<div class="flex justify-between font-bold text-slate-500"><span>└ 영수증 전체 할인</span><span>0원</span></div>`;
         } else {
             overallElements.forEach(el => {
-              let amtVal = Number(el.amount);
+              let amtVal = Number(el.amount || 0);
               if (amtVal < 0) {
                 summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>${amtVal.toLocaleString()}원</span></div>`;
               } else {
@@ -704,7 +701,14 @@
         }
 
         summaryContainer.innerHTML = summaryHTML;
-        setTxt('summaryFinalPrice', (data.receiptTotal > 0 ? data.receiptTotal : (totalCalculatedProductsAmount + sumOverallEtc)).toLocaleString() + '원');
+
+        // 1번 방식 적용: overallElements의 총합을 정확히 산출하여 미정의 에러 방지 및 총액 계산 무결성 확보
+        const sumOverallEtc = overallElements.reduce((acc, el) => acc + Number(el.amount || 0), 0);
+        const resolvedTotal = (data.receiptTotal && data.receiptTotal > 0)
+          ? data.receiptTotal
+          : (totalCalculatedProductsAmount + sumOverallEtc);
+
+        setTxt('summaryFinalPrice', `${resolvedTotal.toLocaleString()}원`);
       }
       
       const summarySec = document.getElementById('receiptSummarySection');
