@@ -31,7 +31,6 @@
       50% { top: 90%; opacity: 0.9; }
     }
     
-    /* 모바일 맞춤형 조절 핸들 및 터치 영역(Hit-Box) 대폭 확대 */
     .cropper-point {
       width: 18px !important;
       height: 18px !important;
@@ -41,7 +40,6 @@
       border-radius: 50% !important;
       touch-action: none !important;
     }
-    /* 손가락 터치 인식을 위한 투명 패딩 확장 (36px 영역) */
     .cropper-point::after {
       content: '';
       position: absolute;
@@ -62,6 +60,21 @@
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+  <!-- 접근 차단 오버레이 (정원 초과 / 기간 만료) -->
+  <div id="accessBlockedOverlay" class="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-6 text-center text-white hidden">
+    <div class="w-16 h-16 rounded-2xl bg-rose-600/20 text-rose-500 flex items-center justify-center text-3xl mb-4 border border-rose-500/30">
+      <i class="fa-solid fa-lock"></i>
+    </div>
+    <h2 class="text-xl font-black mb-2" id="blockTitle">접속 권한 제한</h2>
+    <p class="text-sm text-slate-300 max-w-xs leading-relaxed mb-6" id="blockDesc">
+      허용된 15명의 등록 정원이 마감되었거나 유효 기간이 만료되었습니다.
+    </p>
+    <div class="bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-700 text-xs text-slate-400 space-y-1">
+      <p>본 앱은 지정된 사용자의 100회 한도 내에서 작동합니다.</p>
+      <p class="text-[10px] text-slate-500" id="deviceDisplayId"></p>
+    </div>
+  </div>
 
   <!-- 수동 이미지 자르기 모달 -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4 backdrop-blur-xs">
@@ -102,7 +115,11 @@
           <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 가계지출 분석앱</h1>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 shrink-0">
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- 잔여 쿼터 실시간 표시 배지 -->
+        <span id="quotaBadge" class="text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg">
+          잔여 100회
+        </span>
         <button onclick="resetSystem()" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full active:bg-slate-700 transition" title="초기화">
           <i class="fa-solid fa-rotate-right text-xs"></i>
         </button>
@@ -269,7 +286,76 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    window.onload = function() { clearAnalysisResidue(); };
+    // 1인 1기기 식별 토큰 발급 및 유지
+    function getOrCreateDeviceId() {
+      let id = localStorage.getItem('receipt_device_token');
+      if (!id) {
+        id = 'dev_' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        localStorage.setItem('receipt_device_token', id);
+      }
+      return id;
+    }
+
+    const currentDeviceId = getOrCreateDeviceId();
+
+    function updateQuotaDisplay(remaining, total = 100) {
+      const qb = document.getElementById('quotaBadge');
+      if (!qb) return;
+      qb.innerText = `잔여 ${remaining}/${total}회`;
+      if (remaining <= 0) {
+        qb.className = 'text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-1 rounded-lg';
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+          analyzeBtn.disabled = true;
+          analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          analyzeBtn.innerHTML = '<i class="fa-solid fa-ban"></i> <span>사용 한도 소진 (100/100)</span>';
+        }
+      } else if (remaining <= 10) {
+        qb.className = 'text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-lg';
+      } else {
+        qb.className = 'text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg';
+      }
+    }
+
+    async function verifyDeviceAccess() {
+      try {
+        const res = await fetch('/api/auth-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: currentDeviceId })
+        });
+        const data = await res.json();
+        
+        if (!res.ok || !data.allowed) {
+          showAccessBlocked(data.message || '접속이 차단되었습니다.');
+          return false;
+        }
+
+        if (typeof data.remaining === 'number') {
+          updateQuotaDisplay(data.remaining, data.totalQuota || 100);
+        }
+        return true;
+      } catch (err) {
+        console.warn('기기 검증 네트워크 일시 오류:', err);
+        return true;
+      }
+    }
+
+    function showAccessBlocked(message) {
+      const overlay = document.getElementById('accessBlockedOverlay');
+      const desc = document.getElementById('blockDesc');
+      const devIdEl = document.getElementById('deviceDisplayId');
+      if (overlay) overlay.classList.remove('hidden');
+      if (desc) desc.innerText = message;
+      if (devIdEl) devIdEl.innerText = `기기 식별자: ${currentDeviceId.substring(0, 16)}...`;
+    }
+
+    window.onload = function() {
+      verifyDeviceAccess();
+      clearAnalysisResidue();
+    };
 
     function openCompactPopup(urlToOpen) {
       if (!urlToOpen || urlToOpen.includes("정보없음") || urlToOpen.includes("미확인")) return;
@@ -391,27 +477,26 @@
 
         if (cropperInstance) cropperInstance.destroy();
 
-        // 3가지 모바일 터치 최적화 설정 적용 (이미지 완전고정 + 100% 꽉 찬 영역 시작 + 영역 해제 방지)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
-          autoCropArea: 1.0,         // 100% 꽉 찬 상태로 시작
-          dragMode: 'none',          // 바깥 빈 공간을 터치해도 새 사각형을 그리지 않고 영역 해제 원천 방지
-          movable: false,           // 원본 이미지 이동 불가 (액자 고정)
-          zoomable: false,          // 핀치 줌 / 더블 터치 확대 불가
-          rotatable: false,         // 회전 불가
-          scalable: false,          // 크기 반전 불가
-          toggleDragModeOnDblclick: false, // 더블 클릭/터치 시 모드 변경 방지
+          autoCropArea: 1.0,
+          dragMode: 'none',
+          movable: false,
+          zoomable: false,
+          rotatable: false,
+          scalable: false,
+          toggleDragModeOnDblclick: false,
           responsive: true,
           restore: false,
           checkCrossOrigin: false,
           modal: true,
           guides: true,
           center: true,
-          highlight: false,         // 불필요한 하이라이트 레이어 제거
+          highlight: false,
           background: false,
           autoCrop: true,
-          cropBoxMovable: true,     // 선택 영역 자체 이동 가능
-          cropBoxResizable: true,   // 모서리/테두리 크기 조절 가능
+          cropBoxMovable: true,
+          cropBoxResizable: true,
           minCropBoxWidth: 80,
           minCropBoxHeight: 80
         });
@@ -514,7 +599,10 @@
         const response = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: activeReceiptBase64 })
+          body: JSON.stringify({ 
+            image: activeReceiptBase64,
+            deviceId: currentDeviceId 
+          })
         });
 
         const textResult = await response.text();
@@ -530,6 +618,11 @@
         }
 
         if(scannerLine) scannerLine.classList.add('hidden');
+        
+        if (typeof result.remainingQuota === 'number') {
+          updateQuotaDisplay(result.remainingQuota, 100);
+        }
+
         renderAnalysisUI(result);
       } catch (e) {
         if(scannerLine) scannerLine.classList.add('hidden');
