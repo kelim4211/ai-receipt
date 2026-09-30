@@ -68,7 +68,7 @@
     </div>
     <h2 class="text-xl font-black mb-2" id="blockTitle">접속 권한 제한</h2>
     <p class="text-sm text-slate-300 max-w-xs leading-relaxed mb-6" id="blockDesc">
-      허용된 15명의 등록 정원이 마감되었거나 유효 기간이 만료되었습니다.
+      허용된 등록 정원이 마감되었거나 유효 기간이 만료되었습니다.
     </p>
     <div class="bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-700 text-xs text-slate-400 space-y-1">
       <p>본 앱은 지정된 사용자의 100회 한도 내에서 작동합니다.</p>
@@ -619,6 +619,7 @@
 
         if(scannerLine) scannerLine.classList.add('hidden');
         
+        // 분석 완료 후 서버가 넘겨준 최신 잔여량으로 배지 실시간 갱신
         if (typeof result.remainingQuota === 'number') {
           updateQuotaDisplay(result.remainingQuota, 100);
         }
