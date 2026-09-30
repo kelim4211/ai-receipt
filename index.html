@@ -4,6 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>지능형 AI 가계지출 분석앱</title>
+
+  <!-- 카카오톡 인앱 브라우저 감지 시 외부 브라우저(크롬/사파리) 강제 전환 스크립트 -->
+  <script>
+    (function() {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const currentUrl = location.href;
+
+      if (userAgent.includes('kakaotalk')) {
+        if (userAgent.includes('android')) {
+          // 안드로이드: 기본 Chrome 앱으로 강제 전환
+          location.href = 'intent://' + location.href.replace(/https?:\/\//i, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+        } else if (userAgent.includes('iphone') || userAgent.includes('ipad') || userAgent.includes('ipod')) {
+          // 아이폰/iPad: Safari 등 외부 기본 브라우저로 강제 전환
+          location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(currentUrl);
+        }
+      }
+    })();
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
@@ -290,7 +309,7 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // 1인 1기기 식별 토큰 발급 및 유지
+    // 1인 1기기 식별 토큰 발급 및 유지[cite: 5]
     function getOrCreateDeviceId() {
       let id = localStorage.getItem('receipt_device_token');
       if (!id) {
@@ -304,7 +323,7 @@
 
     const currentDeviceId = getOrCreateDeviceId();
 
-    // 횟수 배지 및 분모 자동 확장 표기[cite: 9]
+    // 횟수 배지 및 분모 자동 확장 표기[cite: 5]
     function updateQuotaDisplay(remaining, total = 200) {
       const qb = document.getElementById('quotaBadge');
       if (!qb) return;
