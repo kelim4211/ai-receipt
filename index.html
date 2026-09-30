@@ -239,10 +239,10 @@
           </div>
         </div>
 
-        <!-- 영수증 전체 정산 요약 -->
+        <!-- 전체 정산 요약 섹션 (용어 변경 반영) -->
         <div id="receiptSummarySection" class="hidden mt-4 pt-3.5 pb-3.5 px-3.5 border-2 border-brand-300 space-y-3 bg-gradient-to-br from-brand-50 via-blue-50 to-indigo-50 rounded-2xl">
           <div class="flex items-center justify-between border-b border-brand-200 pb-2">
-            <span class="text-xs font-black text-brand-900"><i class="fa-solid fa-calculator text-brand-600"></i> 영수증 전체 정산 요약</span>
+            <span class="text-xs font-black text-brand-900"><i class="fa-solid fa-calculator text-brand-600"></i> 전체 정산 요약</span>
             <span class="text-[10px] bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full">자체 검산 완료</span>
           </div>
           <div id="summaryItemsContainer" class="space-y-2 text-xs"></div>
@@ -702,7 +702,6 @@
 
         summaryContainer.innerHTML = summaryHTML;
 
-        // 1번 방식 적용: overallElements의 총합을 정확히 산출하여 미정의 에러 방지 및 총액 계산 무결성 확보
         const sumOverallEtc = overallElements.reduce((acc, el) => acc + Number(el.amount || 0), 0);
         const resolvedTotal = (data.receiptTotal && data.receiptTotal > 0)
           ? data.receiptTotal
