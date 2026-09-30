@@ -1,11 +1,79 @@
 export const maxDuration = 30;
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: '잘못된 접근입니다.' });
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+  // 환경 변수 설정
+  const MAX_DEVICES = Number(process.env.MAX_DEVICES || 15);
+  const QUOTA_PER_USER = Number(process.env.QUOTA_PER_USER || 200);
+  const expireEnv = process.env.EXPIRATION_DATE || '2026-10-16T18:00:00+09:00';
+
+  // 1. 유효 기한 만료 체크
+  if (Date.now() > new Date(expireEnv).getTime()) {
+    return res.status(403).json({ error: '사용 기간(10월 16일 18시)이 종료되었습니다.', allowed: false });
   }
 
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  // Upstash Redis URL 및 토큰 포맷 보정
+  let rawKvUrl = process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+  const kvToken = process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+
+  if (!rawKvUrl.startsWith('http') && rawKvUrl) {
+    rawKvUrl = `https://${rawKvUrl}`;
+  }
+  const kvUrl = rawKvUrl.replace(/\/+$/, '');
+  const headers = { Authorization: `Bearer ${kvToken}` };
+
+  // ==========================================
+  // [A] GET 요청: 최초 접속 시 현재 잔여량 조회
+  // ==========================================
+  if (req.method === 'GET') {
+    const deviceId = req.query.deviceId;
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId가 필요합니다.' });
+    }
+
+    if (!kvUrl || !kvToken) {
+      return res.status(200).json({ allowed: true, remaining: QUOTA_PER_USER, totalQuota: QUOTA_PER_USER });
+    }
+
+    try {
+      const membersRes = await fetch(`${kvUrl}/smembers/receipt_allowed_devices`, { headers });
+      const membersData = await membersRes.json();
+      const registered = Array.isArray(membersData.result) ? membersData.result : [];
+
+      // 미등록 기기인데 이미 15명이 다 찬 경우
+      if (!registered.includes(deviceId) && registered.length >= MAX_DEVICES) {
+        return res.status(403).json({ allowed: false, message: `등록 정원(${MAX_DEVICES}명)이 마감되었습니다.` });
+      }
+
+      // 등록 보장
+      if (!registered.includes(deviceId)) {
+        await fetch(`${kvUrl}/sadd/receipt_allowed_devices/${deviceId}`, { headers });
+      }
+
+      // 누적 사용량 조회
+      const usageRes = await fetch(`${kvUrl}/get/usage:${deviceId}`, { headers });
+      const usageData = await usageRes.json();
+      const usedCount = Number(usageData.result || 0);
+      const remaining = Math.max(0, QUOTA_PER_USER - usedCount);
+
+      return res.status(200).json({
+        allowed: true,
+        used: usedCount,
+        remaining: remaining,
+        totalQuota: QUOTA_PER_USER
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || '상태 조회 오류' });
+    }
+  }
+
+  // ==========================================
+  // [B] POST 요청: 영수증 AI 분석 및 1회 차감
+  // ==========================================
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: '허용되지 않은 메서드입니다.' });
+  }
 
   try {
     const { image, deviceId } = req.body;
@@ -13,45 +81,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
     }
 
-    // 1. 유효 기한 확인 (2026-10-16 18:00:00 KST)
-    const expireEnv = process.env.EXPIRATION_DATE || '2026-10-16T18:00:00+09:00';
-    if (Date.now() > new Date(expireEnv).getTime()) {
-      return res.status(403).json({ error: '사용 기간(10월 16일 18시)이 종료되었습니다.' });
-    }
-
-    // 2. Upstash Redis 연동 (URL 보정 및 15명 / 100회 통합 처리)
-    let rawKvUrl = process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
-    const kvToken = process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
-
-    const MAX_DEVICES = Number(process.env.MAX_DEVICES || 15);
-    const QUOTA_PER_USER = Number(process.env.QUOTA_PER_USER || 100);
     let remainingQuota = QUOTA_PER_USER;
 
-    if (rawKvUrl && kvToken && deviceId) {
-      if (!rawKvUrl.startsWith('http')) {
-        rawKvUrl = `https://${rawKvUrl}`;
-      }
-      const kvUrl = rawKvUrl.replace(/\/+$/, '');
-      const headers = { Authorization: `Bearer ${kvToken}` };
-
-      // (1) 현재 등록된 기기 목록 확인
+    if (kvUrl && kvToken && deviceId) {
+      // 기기 등록 확인
       const membersRes = await fetch(`${kvUrl}/smembers/receipt_allowed_devices`, { headers });
       const membersData = await membersRes.json();
       const registered = Array.isArray(membersData.result) ? membersData.result : [];
 
-      // 신규 기기인데 이미 15명이면 차단
       if (!registered.includes(deviceId) && registered.length >= MAX_DEVICES) {
         return res.status(403).json({ error: `등록 인원(${MAX_DEVICES}명)이 마감되었습니다.` });
       }
 
-      // 기기 등록 보장
       if (!registered.includes(deviceId)) {
         await fetch(`${kvUrl}/sadd/receipt_allowed_devices/${deviceId}`, { headers });
       }
 
-      // (2) 사용량 카운트 1 증가 (INCR)
-      const usageKey = `usage:${deviceId}`;
-      const incrRes = await fetch(`${kvUrl}/incr/${usageKey}`, { headers });
+      // 카운트 1 증가 (차감)
+      const incrRes = await fetch(`${kvUrl}/incr/usage:${deviceId}`, { headers });
       const incrData = await incrRes.json();
       const currentUsed = Number(incrData.result || 1);
 
@@ -62,11 +109,11 @@ export default async function handler(req, res) {
       remainingQuota = Math.max(0, QUOTA_PER_USER - currentUsed);
     }
 
-    // 3. Gemini Flash API 호출
+    // Gemini API 호출
     const imageBase64 = image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Vercel 환경 변수에 GEMINI_API_KEY가 설정되지 않았습니다.' });
+      return res.status(500).json({ error: 'GEMINI_API_KEY 환경 변수가 없습니다.' });
     }
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
