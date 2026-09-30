@@ -421,6 +421,7 @@
     function confirmCrop() {
       if (!cropperInstance) return;
 
+      // 캔버스 크기(1200x1200) 및 압축 품질(0.78) 유지
       const croppedCanvas = cropperInstance.getCroppedCanvas({
         maxWidth: 1200,
         maxHeight: 1200,
@@ -618,7 +619,7 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        // 정제된 순수 대표 브랜드명 기반 URL 생성
+        // 정제된 순수 대표 브랜드명 기반 검색 URL 생성
         const searchURL = getSmartSearchURL(resolvedQuery, currentSearchBrand);
 
         let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
@@ -726,8 +727,11 @@
           .trim();
       }
 
+      // '위치' 접미사를 제외하고 순수 '상호명 + 도로명주소'로 구성
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
-      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword.replace(/\s+/g, " ").trim() + " 위치")}`;
+      targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
+
+      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword)}`;
       openCompactPopup(mapSearchURL);
     }
     
