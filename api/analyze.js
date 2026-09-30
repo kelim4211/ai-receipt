@@ -20,14 +20,15 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Vercel 환경 변수에 GEMINI_API_KEY가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // gemini-3.6-flash 고정 엔드포인트
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
 SHOP: 상호명[OCR] | 상호명[AI복원] | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거
-ITEM: 원본제품명 | 정밀복원제품명(표준품명) | 단가곱하기수량의합 | 할인액 | 품목종속할인명(없으면 '없음') | 최종금액
+ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합 | 할인액 | 품목종속할인명(없으면 '없음') | 최종금액
 ETC: 항목명 | 부호를포함한금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
@@ -178,7 +179,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // 중복 제거: 개별 품목 할인 총액과 동일한 집계성 ETC 항목 필터링
+    // 중복 제거: 개별 품목 할인 총합과 같은 집계성 ETC 항목 필터링
     const sumProductDiscounts = resultData.products.reduce((acc, p) => acc + Number(p.discount || 0), 0);
     if (sumProductDiscounts > 0) {
       resultData.overallElements = resultData.overallElements.filter(el => {
