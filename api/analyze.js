@@ -186,7 +186,6 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // 개별 품목 할인 총합과 같은 집계성 ETC 항목 필터링 (중복 방어)
     const sumProductDiscounts = resultData.products.reduce((acc, p) => acc + Number(p.discount || 0), 0);
     if (sumProductDiscounts > 0) {
       resultData.overallElements = resultData.overallElements.filter(el => {
