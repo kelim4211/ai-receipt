@@ -253,7 +253,7 @@
   <script>
     let currentShopAddress = "";
     let currentShopName = "";
-    let currentSearchBrand = ""; // AI가 추출한 대표 유통 브랜드명
+    let currentSearchBrand = "";
     let activeReceiptBase64 = null;
     let cropperInstance = null;
     let currentSelectedSource = "";
@@ -269,10 +269,37 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`);
     }
 
-    // 전략 A 반영: 하드코딩 배열 없이 AI가 정제한 searchBrand만 접두어로 결합
+    // 법인명, 특수문자, 지점명(천안본점, 역삼점 등)을 제거하고 순수 브랜드명만 정제 추출
+    function extractPureBrand(rawName) {
+      if (!rawName || rawName.includes("정보없음")) return "";
+      
+      let brand = rawName.trim();
+      // 1. 법인격 접두어/접미어 제거
+      brand = brand.replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사/g, "");
+      // 2. 언더바 및 구분자 공백 치환
+      brand = brand.replace(/[_/]/g, " ");
+      
+      // 3. 지점명 패턴 제거 (천안본점, 강남점, 신부점 등)
+      brand = brand.replace(/\s*[가-힣A-Za-z0-9]+(본점|지점|점|호점|역점|센터)\b.*$/g, "");
+      brand = brand.replace(/(본점|지점|직영점)\b.*$/g, "");
+      
+      // 4. 대표 브랜드 정규화 (아성다이소 -> 다이소 등)
+      if (brand.includes("다이소")) return "다이소";
+      if (brand.includes("이마트")) return "이마트";
+      if (brand.includes("홈플러스")) return "홈플러스";
+      if (brand.includes("코스트코")) return "코스트코";
+      if (brand.includes("올리브영")) return "올리브영";
+      if (brand.includes("노브랜드")) return "노브랜드";
+
+      brand = brand.replace(/\s+/g, " ").trim();
+      return brand.length >= 2 ? brand : "";
+    }
+
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
-      let cleanBrand = (brandName || "").trim();
+      
+      // 1순위: 인자로 전달된 브랜드, 2순위: AI 추출 브랜드, 3순위: 상호명에서 정제 추출
+      let cleanBrand = extractPureBrand(brandName) || extractPureBrand(currentSearchBrand) || extractPureBrand(currentShopName);
 
       let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
@@ -525,6 +552,7 @@
         currentShopName = '정보없음';
       }
 
+      // 품목 카드 생성 전 대표 브랜드명 우선 확정
       currentSearchBrand = (data.searchBrand || '').trim();
 
       setTxt('part1Date', data.date || '-');
@@ -590,7 +618,7 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        // AI가 추출한 대표 브랜드명(currentSearchBrand) 사용
+        // 정제된 순수 대표 브랜드명 기반 URL 생성
         const searchURL = getSmartSearchURL(resolvedQuery, currentSearchBrand);
 
         let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
