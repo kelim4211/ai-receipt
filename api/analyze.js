@@ -27,15 +27,18 @@ export default async function handler(req, res) {
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
-SHOP: 상호명[OCR] | 상호명[AI복원] | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거
+SHOP: 상호명[OCR] | 상호명[AI복원] | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거 | 검색용대표브랜드명
 ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합 | 할인액 | 품목종속할인명(없으면 '없음') | 최종금액
 ETC: 항목명 | 부호를포함한금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[상호명 규칙]
+[상호명 및 대표 브랜드 규칙]
 1. 상호명[OCR]: 영수증에 식별 가능한 경우만 표기, 없으면 반드시 '정보없음'.
 2. 상호명[AI복원]: OCR이 '정보없음'일 때 고유 제품명 등을 통해 확실한 경우만 상호명 기재, 모호하면 '정보없음'.
 3. 상호명발췌근거: "제품 검색을 통해 확인된 신뢰할 수 있는 고유 제품명 [제품명]을(를) 통해 정확하다고 판단되는 [상호명] 발췌"
+4. 검색용대표브랜드명: 
+   - 법인명((주) 등)과 지점명(천안본점, 강남점 등)을 완전히 제거한 '핵심 유통/제조 브랜드명' 1단어만 기재하십시오. (예: '(주)아성다이소 천안본점' -> '다이소', '이마트 역삼점' -> '이마트', '나이키 광명' -> '나이키', '올리브영 명동점' -> '올리브영')
+   - 일반 자영업 식당, 카페, 동네 마트처럼 제품 검색 접두어로 붙였을 때 오히려 방해가 되는 상호는 반드시 '없음'으로 기재하십시오.
 
 [할인 및 제외 규칙]
 - 특정 품목에 종속된 할인은 ITEM 행의 '할인액'과 '품목종속할인명'에만 기재하고 ETC 중복 기재 금지.
@@ -93,6 +96,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       bizNo: '정보없음',
       phone: '정보없음',
       address: '정보없음',
+      searchBrand: '',
       overallElements: [],
       products: [],
       receiptTotal: 0,
@@ -139,6 +143,9 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         resultData.bizNo = parts[4] || '정보없음';
         resultData.phone = parts[5] || '정보없음';
         resultData.address = parts[6] || '정보없음';
+        
+        let brandCandidate = parts[8] || '없음';
+        resultData.searchBrand = (brandCandidate !== '없음' && !brandCandidate.includes('정보없음')) ? brandCandidate : '';
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
@@ -179,7 +186,7 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       }
     }
 
-    // 중복 제거: 개별 품목 할인 총합과 같은 집계성 ETC 항목 필터링
+    // 개별 품목 할인 총합과 같은 집계성 ETC 항목 필터링 (중복 방어)
     const sumProductDiscounts = resultData.products.reduce((acc, p) => acc + Number(p.discount || 0), 0);
     if (sumProductDiscounts > 0) {
       resultData.overallElements = resultData.overallElements.filter(el => {
