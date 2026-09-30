@@ -116,10 +116,15 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <!-- 잔여 쿼터 실시간 표시 배지 -->
-        <span id="quotaBadge" class="text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg">
-          잔여 확인 중...
-        </span>
+        <!-- 쿼터 배지 및 하단 만료기한 표시 영역 -->
+        <div class="flex flex-col items-end gap-0.5">
+          <span id="quotaBadge" class="text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-0.5 rounded-md leading-tight">
+            잔여 확인 중...
+          </span>
+          <span id="expireDateBadge" class="text-[9px] font-bold text-slate-400 leading-tight">
+            ~10.16 18:00
+          </span>
+        </div>
         <button onclick="resetSystem()" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full active:bg-slate-700 transition" title="초기화">
           <i class="fa-solid fa-rotate-right text-xs"></i>
         </button>
@@ -286,7 +291,7 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // 1인 1기기 식별 토큰 발급 및 로컬스토리지 보존[cite: 9]
+    // 1인 1기기 식별 토큰 발급 및 유지[cite: 9]
     function getOrCreateDeviceId() {
       let id = localStorage.getItem('receipt_device_token');
       if (!id) {
@@ -300,17 +305,16 @@
 
     const currentDeviceId = getOrCreateDeviceId();
 
-    // 잔여 횟수 및 분모 자동 확장 표시 함수[cite: 9]
+    // 횟수 배지 및 분모 자동 확장 표시 함수[cite: 9]
     function updateQuotaDisplay(remaining, total = 100) {
       const qb = document.getElementById('quotaBadge');
       if (!qb) return;
 
-      // 잔여량이 기본 100회보다 많으면 분모도 200, 300 단위로 자동 확장 표기
       const displayTotal = remaining > total ? Math.ceil(remaining / 50) * 50 : total;
       qb.innerText = `잔여 ${remaining}/${displayTotal}회`;
 
       if (remaining <= 0) {
-        qb.className = 'text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-md leading-tight';
         const analyzeBtn = document.getElementById('analyzeBtn');
         if (analyzeBtn) {
           analyzeBtn.disabled = true;
@@ -318,9 +322,9 @@
           analyzeBtn.innerHTML = '<i class="fa-solid fa-ban"></i> <span>사용 한도 소진</span>';
         }
       } else if (remaining <= 10) {
-        qb.className = 'text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md leading-tight';
       } else {
-        qb.className = 'text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-0.5 rounded-md leading-tight';
       }
     }
 
@@ -624,7 +628,6 @@
 
         if(scannerLine) scannerLine.classList.add('hidden');
         
-        // 분석 완료 후 최신 잔여량 배지 실시간 반영
         if (typeof result.remainingQuota === 'number') {
           updateQuotaDisplay(result.remainingQuota, 100);
         }
