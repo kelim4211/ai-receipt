@@ -253,6 +253,7 @@
   <script>
     let currentShopAddress = "";
     let currentShopName = "";
+    let currentSearchBrand = ""; // AI가 추출한 대표 유통 브랜드명
     let activeReceiptBase64 = null;
     let cropperInstance = null;
     let currentSelectedSource = "";
@@ -268,16 +269,12 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`);
     }
 
+    // 전략 A 반영: 하드코딩 배열 없이 AI가 정제한 searchBrand만 접두어로 결합
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
-      let cleanBrand = "";
-      
-      if (brandName && !brandName.includes("정보없음")) {
-        cleanBrand = brandName.replace(/\(AI 추정\)|AI 추정|\(추정\)/g, "").trim();
-      }
+      let cleanBrand = (brandName || "").trim();
 
-      const isRetailBrand = cleanBrand.includes("다이소") || cleanBrand.includes("이마트") || cleanBrand.includes("코스트코");
-      let fullQuery = (isRetailBrand && cleanBrand) ? `${cleanBrand} ${queryText}` : queryText;
+      let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
 
       if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
@@ -287,6 +284,7 @@
     function clearAnalysisResidue() {
       currentShopAddress = "";
       currentShopName = "";
+      currentSearchBrand = "";
       activeReceiptBase64 = null;
 
       ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
@@ -439,6 +437,7 @@
 
       currentShopName = "";
       currentShopAddress = "";
+      currentSearchBrand = "";
       const storeOcrBadge = document.getElementById('storeOcrBadge');
       if(storeOcrBadge) {
         storeOcrBadge.innerText = "판독 중...";
@@ -526,6 +525,8 @@
         currentShopName = '정보없음';
       }
 
+      currentSearchBrand = (data.searchBrand || '').trim();
+
       setTxt('part1Date', data.date || '-');
       setTxt('part1ShopOcr', cleanOcr);
       setTxt('part1ShopName', currentShopName);
@@ -589,7 +590,8 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        const searchURL = getSmartSearchURL(resolvedQuery, currentShopName);
+        // AI가 추출한 대표 브랜드명(currentSearchBrand) 사용
+        const searchURL = getSmartSearchURL(resolvedQuery, currentSearchBrand);
 
         let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
         if (numDisc > 0 && item.discountName) {
