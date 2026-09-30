@@ -19,50 +19,50 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: '사용 기간(10월 16일 18시)이 종료되었습니다.' });
     }
 
-    // 2. Upstash Redis 환경 변수 정리 및 잔여 쿼터 확인
+    // 2. Upstash Redis 연동 (URL 보정 및 15명 / 100회 통합 처리)
     let rawKvUrl = process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
     const kvToken = process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
 
-    if (rawKvUrl && !rawKvUrl.startsWith('http')) {
-      rawKvUrl = `https://${rawKvUrl}`;
-    }
-    const kvUrl = rawKvUrl.replace(/\/+$/, '');
-
+    const MAX_DEVICES = Number(process.env.MAX_DEVICES || 15);
     const QUOTA_PER_USER = Number(process.env.QUOTA_PER_USER || 100);
     let remainingQuota = QUOTA_PER_USER;
 
-    if (kvUrl && kvToken) {
-      if (!deviceId) {
-        return res.status(403).json({ error: '인증되지 않은 기기입니다.' });
+    if (rawKvUrl && kvToken && deviceId) {
+      if (!rawKvUrl.startsWith('http')) {
+        rawKvUrl = `https://${rawKvUrl}`;
+      }
+      const kvUrl = rawKvUrl.replace(/\/+$/, '');
+      const headers = { Authorization: `Bearer ${kvToken}` };
+
+      // (1) 현재 등록된 기기 목록 확인
+      const membersRes = await fetch(`${kvUrl}/smembers/receipt_allowed_devices`, { headers });
+      const membersData = await membersRes.json();
+      const registered = Array.isArray(membersData.result) ? membersData.result : [];
+
+      // 신규 기기인데 이미 15명이면 차단
+      if (!registered.includes(deviceId) && registered.length >= MAX_DEVICES) {
+        return res.status(403).json({ error: `등록 인원(${MAX_DEVICES}명)이 마감되었습니다.` });
       }
 
-      // 15대 기기 목록 자동 보장 (SADD)
-      await fetch(`${kvUrl}/sadd/receipt_allowed_devices/${deviceId}`, {
-        headers: { Authorization: `Bearer ${kvToken}` }
-      });
+      // 기기 등록 보장
+      if (!registered.includes(deviceId)) {
+        await fetch(`${kvUrl}/sadd/receipt_allowed_devices/${deviceId}`, { headers });
+      }
 
-      // 현재 사용량 확인
+      // (2) 사용량 카운트 1 증가 (INCR)
       const usageKey = `usage:${deviceId}`;
-      const getUsageRes = await fetch(`${kvUrl}/get/${usageKey}`, {
-        headers: { Authorization: `Bearer ${kvToken}` }
-      });
-      const getUsageData = await getUsageRes.json();
-      const currentUsed = Number(getUsageData.result || 0);
+      const incrRes = await fetch(`${kvUrl}/incr/${usageKey}`, { headers });
+      const incrData = await incrRes.json();
+      const currentUsed = Number(incrData.result || 1);
 
-      if (currentUsed >= QUOTA_PER_USER) {
+      if (currentUsed > QUOTA_PER_USER) {
         return res.status(403).json({ error: `부여된 분석 한도(${QUOTA_PER_USER}회)를 모두 소진하셨습니다.` });
       }
 
-      // 사용량 1회 증가 (INCR)
-      const incrRes = await fetch(`${kvUrl}/incr/${usageKey}`, {
-        headers: { Authorization: `Bearer ${kvToken}` }
-      });
-      const incrData = await incrRes.json();
-      const newUsed = Number(incrData.result || currentUsed + 1);
-      remainingQuota = Math.max(0, QUOTA_PER_USER - newUsed);
+      remainingQuota = Math.max(0, QUOTA_PER_USER - currentUsed);
     }
 
-    // 3. Gemini Flash API 분석 호출
+    // 3. Gemini Flash API 호출
     const imageBase64 = image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
