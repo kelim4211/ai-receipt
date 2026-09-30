@@ -145,14 +145,13 @@
         </div>
       </section>
 
-      <!-- 상호 분석 섹션 -->
+      <!-- 상호 분석 섹션 (오른쪽 '분석완료' 버튼 삭제 완료) -->
       <section class="bg-white border-2 border-brand-200 rounded-2xl p-4 shadow-sm space-y-3">
         <div class="flex items-center justify-between border-b border-brand-100 pb-2">
           <div class="flex items-center gap-2">
             <i class="fa-solid fa-store text-brand-600 text-base"></i>
             <h2 class="font-black text-sm text-slate-900">상호 분석</h2>
           </div>
-          <span id="storeOcrBadge" class="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">판독 대기</span>
         </div>
 
         <div class="space-y-2 text-xs">
@@ -274,16 +273,11 @@
       if (!rawName || rawName.includes("정보없음")) return "";
       
       let brand = rawName.trim();
-      // 1. 법인격 접두어/접미어 제거
       brand = brand.replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사/g, "");
-      // 2. 언더바 및 구분자 공백 치환
       brand = brand.replace(/[_/]/g, " ");
-      
-      // 3. 지점명 패턴 제거 (천안본점, 강남점, 신부점 등)
       brand = brand.replace(/\s*[가-힣A-Za-z0-9]+(본점|지점|점|호점|역점|센터)\b.*$/g, "");
       brand = brand.replace(/(본점|지점|직영점)\b.*$/g, "");
       
-      // 4. 대표 브랜드 정규화 (아성다이소 -> 다이소 등)
       if (brand.includes("다이소")) return "다이소";
       if (brand.includes("이마트")) return "이마트";
       if (brand.includes("홈플러스")) return "홈플러스";
@@ -297,8 +291,6 @@
 
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
-      
-      // 1순위: 인자로 전달된 브랜드, 2순위: AI 추출 브랜드, 3순위: 상호명에서 정제 추출
       let cleanBrand = extractPureBrand(brandName) || extractPureBrand(currentSearchBrand) || extractPureBrand(currentShopName);
 
       let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand} ${queryText}` : queryText;
@@ -334,12 +326,6 @@
         reasonCont.innerText = '';
         reasonCont.classList.add('hidden');
       }
-
-      const badge = document.getElementById('storeOcrBadge');
-      if(badge) {
-        badge.innerText = "판독 대기";
-        badge.className = "text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200";
-      }
       
       const countBadge = document.getElementById('productCountBadge');
       if(countBadge) countBadge.innerText = "총 0개 품목";
@@ -351,7 +337,10 @@
       if(summarySec) summarySec.classList.add('hidden');
 
       const scanBadge = document.getElementById('scanStatusBadge');
-      if(scanBadge) scanBadge.innerText = '● 대기 중 (0% 초기화됨)';
+      if(scanBadge) {
+        scanBadge.innerText = '● 대기 중 (0% 초기화됨)';
+        scanBadge.className = 'text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full';
+      }
 
       const img = document.getElementById('uploadedReceiptImg');
       if(img) {
@@ -439,7 +428,10 @@
       if (previewCont) previewCont.classList.add('hidden');
 
       const scanBadge = document.getElementById('scanStatusBadge');
-      if (scanBadge) scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (분석 대기)`;
+      if (scanBadge) {
+        scanBadge.innerText = `● ${currentSelectedSource} 영역 지정됨 (분석 대기)`;
+        scanBadge.className = 'text-[11px] bg-amber-50 text-amber-700 border border-amber-300 font-extrabold px-2.5 py-0.5 rounded-full';
+      }
 
       cancelCrop();
     }
@@ -465,11 +457,13 @@
       currentShopName = "";
       currentShopAddress = "";
       currentSearchBrand = "";
-      const storeOcrBadge = document.getElementById('storeOcrBadge');
-      if(storeOcrBadge) {
-        storeOcrBadge.innerText = "판독 중...";
-        storeOcrBadge.className = "text-[10px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full border border-amber-600 shadow-xs";
+
+      const scanBadge = document.getElementById('scanStatusBadge');
+      if(scanBadge) {
+        scanBadge.innerText = '● 영수증 정밀 분석 중...';
+        scanBadge.className = 'text-[11px] bg-blue-50 text-blue-700 border border-blue-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
+
       document.getElementById('part1ShopOcr').innerText = '정보없음';
       document.getElementById('part1ShopName').innerText = '정보없음';
       document.getElementById('part1Date').innerText = '-';
@@ -537,10 +531,11 @@
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       const toFastNumber = (val) => (typeof val === 'number' ? val : Number(String(val || 0).replace(/[^0-9]/g, '')) || 0);
 
-      const storeOcrBadge = document.getElementById('storeOcrBadge');
-      if(storeOcrBadge) {
-        storeOcrBadge.innerText = "분석완료";
-        storeOcrBadge.className = "text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full border border-emerald-700 shadow-xs";
+      // '갤러리 영역 지정됨(분석 대기)' -> '● 분석 완료'로 갱신
+      const scanBadge = document.getElementById('scanStatusBadge');
+      if (scanBadge) {
+        scanBadge.innerText = '● 분석 완료';
+        scanBadge.className = 'text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
 
       let rawShopOcr = data.shopOcr || '정보없음';
@@ -552,7 +547,6 @@
         currentShopName = '정보없음';
       }
 
-      // 품목 카드 생성 전 대표 브랜드명 우선 확정
       currentSearchBrand = (data.searchBrand || '').trim();
 
       setTxt('part1Date', data.date || '-');
@@ -618,7 +612,6 @@
         totalCalculatedProductsAmount += finalPrice;
 
         const resolvedQuery = item.productAi || item.productOcr;
-        // 정제된 순수 대표 브랜드명 기반 URL 생성
         const searchURL = getSmartSearchURL(resolvedQuery, currentSearchBrand);
 
         let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
@@ -726,7 +719,6 @@
           .trim();
       }
 
-      // '위치' 접미사 없이 '상호명 + 도로명주소'만 전달[cite: 12]
       let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
       targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
 
