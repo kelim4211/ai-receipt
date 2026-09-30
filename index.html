@@ -31,22 +31,34 @@
       50% { top: 90%; opacity: 0.9; }
     }
     
+    /* 모바일 맞춤형 조절 핸들 및 터치 영역(Hit-Box) 대폭 확대 */
     .cropper-point {
-      width: 16px !important;
-      height: 16px !important;
+      width: 18px !important;
+      height: 18px !important;
       background-color: #2563eb !important;
       opacity: 0.95 !important;
       border: 2px solid white !important;
       border-radius: 50% !important;
+      touch-action: none !important;
     }
-    .cropper-point.point-n { top: -8px !important; }
-    .cropper-point.point-s { bottom: -8px !important; }
-    .cropper-point.point-w { left: -8px !important; }
-    .cropper-point.point-e { right: -8px !important; }
-    .cropper-point.point-nw { top: -8px !important; left: -8px !important; }
-    .cropper-point.point-ne { top: -8px !important; right: -8px !important; }
-    .cropper-point.point-sw { bottom: -8px !important; left: -8px !important; }
-    .cropper-point.point-se { bottom: -8px !important; right: -8px !important; width: 18px !important; height: 18px !important; }
+    /* 손가락 터치 인식을 위한 투명 패딩 확장 (36px 영역) */
+    .cropper-point::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      background: transparent;
+    }
+    .cropper-point.point-n { top: -9px !important; }
+    .cropper-point.point-s { bottom: -9px !important; }
+    .cropper-point.point-w { left: -9px !important; }
+    .cropper-point.point-e { right: -9px !important; }
+    .cropper-point.point-nw { top: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-ne { top: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-sw { bottom: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-se { bottom: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -145,7 +157,7 @@
         </div>
       </section>
 
-      <!-- 상호 분석 섹션 (오른쪽 '분석완료' 버튼 삭제 완료) -->
+      <!-- 상호 분석 섹션 -->
       <section class="bg-white border-2 border-brand-200 rounded-2xl p-4 shadow-sm space-y-3">
         <div class="flex items-center justify-between border-b border-brand-100 pb-2">
           <div class="flex items-center gap-2">
@@ -268,7 +280,6 @@
       window.open(urlToOpen, 'IndependentProductSearchPopup', `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`);
     }
 
-    // 법인명, 특수문자, 지점명(천안본점, 역삼점 등)을 제거하고 순수 브랜드명만 정제 추출
     function extractPureBrand(rawName) {
       if (!rawName || rawName.includes("정보없음")) return "";
       
@@ -380,27 +391,29 @@
 
         if (cropperInstance) cropperInstance.destroy();
 
+        // 3가지 모바일 터치 최적화 설정 적용 (이미지 완전고정 + 100% 꽉 찬 영역 시작 + 영역 해제 방지)
         cropperInstance = new Cropper(imageToCrop, {
           viewMode: 1,
-          autoCropArea: 0.95,
+          autoCropArea: 1.0,         // 100% 꽉 찬 상태로 시작
+          dragMode: 'none',          // 바깥 빈 공간을 터치해도 새 사각형을 그리지 않고 영역 해제 원천 방지
+          movable: false,           // 원본 이미지 이동 불가 (액자 고정)
+          zoomable: false,          // 핀치 줌 / 더블 터치 확대 불가
+          rotatable: false,         // 회전 불가
+          scalable: false,          // 크기 반전 불가
+          toggleDragModeOnDblclick: false, // 더블 클릭/터치 시 모드 변경 방지
           responsive: true,
           restore: false,
           checkCrossOrigin: false,
           modal: true,
           guides: true,
           center: true,
-          highlight: true,
+          highlight: false,         // 불필요한 하이라이트 레이어 제거
           background: false,
           autoCrop: true,
-          zoomable: true,
-          zoomOnTouch: false,
-          scalable: false,
-          toggleDragModeOnDblclick: false,
-          dragMode: 'crop',
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          minCropBoxWidth: 120,
-          minCropBoxHeight: 120
+          cropBoxMovable: true,     // 선택 영역 자체 이동 가능
+          cropBoxResizable: true,   // 모서리/테두리 크기 조절 가능
+          minCropBoxWidth: 80,
+          minCropBoxHeight: 80
         });
       };
       reader.readAsDataURL(file);
@@ -531,7 +544,6 @@
       const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
       const toFastNumber = (val) => (typeof val === 'number' ? val : Number(String(val || 0).replace(/[^0-9]/g, '')) || 0);
 
-      // '갤러리 영역 지정됨(분석 대기)' -> '● 분석 완료'로 갱신
       const scanBadge = document.getElementById('scanStatusBadge');
       if (scanBadge) {
         scanBadge.innerText = '● 분석 완료';
