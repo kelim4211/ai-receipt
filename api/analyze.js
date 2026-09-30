@@ -17,55 +17,53 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
+      return res.status(500).json({ error: 'Vercel 환경 변수에 GEMINI_API_KEY가 설정되지 않았습니다.' });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
 오직 아래의 줄 단위 텍스트 형식 규칙에 맞춰서만 출력하십시오.
 
 [출력 양식]
 SHOP: 상호명[OCR] | 상호명[AI복원] | 업종및가게성격 | 일자 | 사업자번호 | 전화번호 | 주소 | 상호명발췌근거
-ITEM: 원본제품명 | 정밀복원제품명(실제유통데이터및검색일치도가가장높은표준품명) | 단가곱하기수량의합 | 할인액 | 최종금액
+ITEM: 원본제품명 | 정밀복원제품명(표준품명) | 단가곱하기수량의합 | 할인액 | 품목종속할인명(없으면 '없음') | 최종금액
 ETC: 항목명 | 부호를포함한금액
 TOTAL: 영수증에_인쇄된_최종결제총액
 
-[상호명 로직 절대 규칙 - 반드시 숙지할 것]
-1. 상호명[OCR]: 영수증에 있는 상호 그대로 OCR 판독해서 보여줍니다. 영수증에 상호명이 없거나 잘려서 식별 불가한 경우 반드시 '정보없음'으로 기재하십시오. (절대 임의 유추 금지)
-2. 상호명[AI복원]: 
-   - 상호명[OCR]이 '정보없음'일 때만 작동합니다.
-   - 제품 검색 버튼을 눌렀을 때 보여지는 인터넷 검색 내용 중, 신뢰할 수 있는 고유 제품명, 품번 등을 통해 정확하다고 판단되는 상호명이 있을 때만 상호명을 '발췌'해서 해당 항목에 보여줍니다. (예: '럭키 모짜라이스롤 떡볶이' 인터넷 검색 정보를 통해 '명랑핫도그'가 정확하다고 판단될 때만 발췌)
-   - 검색을 통한 확신이 불가능한 일반 명사(예: 단순 떡볶이, 치킨 등)인 경우 무리하게 유추하지 말고 반드시 '정보없음'으로 기재하십시오.
-3. 상호명발췌근거: 상호명[AI복원] 항목에 상호를 발췌해서 보여준 경우, "제품 검색을 통해 확인된 신뢰할 수 있는 고유 제품명 [활용한 제품명]을(를) 통해 정확하다고 판단되는 [상호명] 발췌" 형태로 8번째 필드에 기재하십시오.
+[상호명 로직]
+1. 상호명[OCR]: 영수증에 식별 가능한 경우만 표기, 없으면 반드시 '정보없음'.
+2. 상호명[AI복원]: OCR이 '정보없음'일 때 고유 제품명 등을 통해 확실한 경우만 상호명 기재, 모호하면 '정보없음'.
+3. 상호명발췌근거: "제품 검색을 통해 확인된 신뢰할 수 있는 고유 제품명 [제품명]을(를) 통해 정확하다고 판단되는 [상호명] 발췌"
 
-[ETC 항목 자율 추출 원칙 (기호/용어 범용 대응)]
-- 영수증에 인쇄된 내용 중 품목(ITEM)과 최종 결제총액(TOTAL)을 제외한 나머지 모든 추가 요금, 수수료, 배달팁, 각종 할인/차감/쿠폰 항목은 명칭이나 기호에 구애받지 말고 부호를 포함하여 무조건 ETC 형식으로 빠짐없이 추출하십시오.
+[할인 분리 절대 규칙]
+- 특정 품목 바로 아래에 인쇄된 할인(예: [과일] S-Point 행사, 개별 품목 밑 할인)은 ITEM 행의 '할인액'과 '품목종속할인명'에만 기재하고 ETC에는 절대 중복 기재하지 마십시오.
+- 장바구니 전체 쿠폰, 통합 포인트 차감 등 '영수증 전체 단위 할인'만 ETC로 추출하십시오.
 
-[제품검색 기반 최고 정확도 명칭 발췌 절대 규칙]
-- ITEM의 두 번째 필드(정밀복원제품명)를 복원할 때, 영수증에 없는 제조사명을 임의로 지어내어 추가하는 행위를 절대 금지합니다.
-- 대신 실제 인터넷 쇼핑 및 유통 데이터에서 해당 품목의 가장 정확도와 일치도가 높은 실제 표준 상품명을 매칭하여 발췌하십시오.
-
-[제외 항목 엄격 규칙]
-- 영수증 하단의 '과세', '부가세' 항목은 정산 및 ETC 분석 대상에서 절대 포함하지 말고 완전히 제외하십시오.`;
+[제외 항목 및 수납/단순 집계 내역 엄격 규칙 (중복/오인식 절대 방지)]
+1. 세금 내역 절대 제외:
+   - '과세', '과세금액', '과 세 금 액', '부가세', '부 가 세', '세액', '면세' 등 세금 분리 표시는 정산/ETC/ITEM에서 완전히 제외하십시오.
+2. 수납/결제 확인 내역 절대 제외:
+   - '총매출액', '합계', '받은돈', '받 은 돈', '받을금액', '거스름돈', '거 스 름 돈', '현금', '카드결제액', '승인금액' 등 단순 결제 수납 라인은 ETC나 ITEM으로 절대 추출하지 마십시오.
+3. 품목 할인 단순 집계(Subtotal) 라인 절대 제외:
+   - 영수증 하단에 개별 품목 할인들을 단순히 합산해 놓은 '할인합계', '총할인', '할인액합계', '할인총액' 등은 ETC로 절대 추출하지 말고 완전히 제외하십시오.`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         system_instruction: {
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          max_output_tokens: 8000
+          max_output_tokens: 4096
         },
         contents: [
           {
             parts: [
-              { text: "영수증에 상호가 없으면 OCR은 '정보없음'으로 처리하고, AI복원은 제품 검색 인터넷 정보를 통해 신뢰할 수 있는 고유 제품명으로 판단되는 정확한 상호명이 있을 때만 발췌해서 기재하십시오. 또한 모든 추가 요금/할인(ETC)과 최종 총액(TOTAL)을 정확히 분석하여 출력하시오." },
+              { text: "영수증을 줄 단위 형식 규칙대로 정밀 분석하여 출력하십시오. 개별 품목 할인의 단순 총합인 '할인합계' 및 과세/부가세/수납 확인 라인을 ETC로 잘못 추출하지 마십시오." },
               { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
             ]
           }
@@ -82,12 +80,12 @@ TOTAL: 영수증에_인쇄된_최종결제총액
     try {
       parsedApiResponse = JSON.parse(responseText);
     } catch (e) {
-      return res.status(500).json({ error: `서버 응답 파싱 실패: 원본 응답이 올바르지 않습니다. (${responseText.substring(0, 80)})` });
+      return res.status(500).json({ error: `AI 응답 파싱 실패: ${responseText.substring(0, 100)}` });
     }
 
     const rawText = parsedApiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!rawText) {
-      return res.status(500).json({ error: 'AI 분석 결과가 비어 있습니다. 영수증 사진을 다시 선명하게 촬영해 주세요.' });
+      return res.status(500).json({ error: 'AI 분석 결과가 비어 있습니다. 영수증을 다시 촬영해 주세요.' });
     }
 
     const resultData = {
@@ -114,6 +112,12 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       return val || fallback;
     };
 
+    // 세금, 단순 수납 라인 및 개별 품목 할인 단순 집계(Subtotal) 필터링
+    const isExcludedEtcItem = (name) => {
+      const normalized = name.replace(/\s+/g, '');
+      return /과세|부가세|세액|면세|총매출|받은돈|받을금액|거스름|결제금액|합계금액|카드결제|할인합계|총할인|할인총액|할인액합계/i.test(normalized);
+    };
+
     const lines = rawText.split('\n');
 
     for (const line of lines) {
@@ -125,28 +129,16 @@ TOTAL: 영수증에_인쇄된_최종결제총액
         let rawShopOcr = parts[0] || '정보없음';
         let rawShopAi = parts[1] || '정보없음';
         
-        let isOcrValid = true;
-        if (!rawShopOcr || rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) {
-          rawShopOcr = '정보없음';
-          isOcrValid = false;
-        }
+        let isOcrValid = !(rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2);
+        resultData.shopOcr = isOcrValid ? rawShopOcr : '정보없음';
 
-        resultData.shopOcr = rawShopOcr;
-        let rawReason = parts[7] || '';
-        
-        if (!isOcrValid) {
-          if (rawShopAi && !rawShopAi.includes('정보없음') && rawShopAi.length >= 2) {
-            resultData.shopName = rawShopAi;
-            resultData.shopConfidence = 'estimated';
-            resultData.shopReason = rawReason;
-          } else {
-            resultData.shopName = '정보없음';
-            resultData.shopConfidence = 'none';
-            resultData.shopReason = '';
-          }
+        if (!isOcrValid && rawShopAi && !rawShopAi.includes('정보없음') && rawShopAi.length >= 2) {
+          resultData.shopName = rawShopAi;
+          resultData.shopConfidence = 'estimated';
+          resultData.shopReason = parts[7] || '';
         } else {
-          resultData.shopName = rawShopOcr;
-          resultData.shopConfidence = 'official';
+          resultData.shopName = isOcrValid ? rawShopOcr : '정보없음';
+          resultData.shopConfidence = isOcrValid ? 'official' : 'none';
           resultData.shopReason = '';
         }
 
@@ -158,55 +150,51 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       } else if (trimmed.startsWith('ITEM:')) {
         const parts = trimmed.substring(5).split('|').map(cleanStr);
         if (parts[0]) {
+          if (isExcludedEtcItem(parts[0])) continue;
+
           const basePrice = cleanNum(parts[2], '0');
           const rawDiscount = cleanNum(parts[3], '0');
-          const finalPriceVal = cleanNum(parts[4], basePrice);
+          let discountName = parts.length >= 6 && parts[4] !== '없음' ? parts[4] : '';
+          let finalPriceVal = parts.length >= 6 ? cleanNum(parts[5], basePrice) : cleanNum(parts[4], basePrice);
 
           resultData.products.push({
             productOcr: parts[0],
             productAi: parts[1] || parts[0],
             totalPrice: basePrice,
             discount: rawDiscount,
+            discountName: discountName,
             finalPrice: finalPriceVal
           });
         }
       } else if (trimmed.startsWith('TOTAL:')) {
         resultData.receiptTotal = Number(cleanNum(trimmed.substring(6), '0'));
-      } else if (trimmed.startsWith('ETC:') || /[-+]?\d/.test(trimmed)) {
-        if (/과세|부가세|세액|면세/i.test(trimmed)) {
-          continue;
-        }
+      } else if (trimmed.startsWith('ETC:')) {
+        const parts = trimmed.substring(4).split('|').map(cleanStr);
+        let name = parts[0].replace(/^[*\s]+/, '') || '전체 할인/추가';
+        
+        if (isExcludedEtcItem(name)) continue;
 
-        let name = "추가/할인 항목";
-        let amountStr = "0";
-
-        if (trimmed.startsWith('ETC:')) {
-          const parts = trimmed.substring(4).split('|').map(cleanStr);
-          name = parts[0].replace(/^[*\s]+/, '') || '추가/할인 항목';
-          if (/과세|부가세|세액|면세/i.test(name)) continue;
-          amountStr = cleanNum(parts[1], '0');
-        } else {
-          const matchNums = trimmed.match(/-?\d[\d,.]*/g);
-          if (matchNums && matchNums.length > 0) {
-            amountStr = cleanNum(matchNums[matchNums.length - 1], '0');
-            name = trimmed.replace(/[-?\d,.-]+/g, '').replace(/^[*\s]+/, '').trim() || "추가/할인 항목";
-          }
-        }
-
-        let isNegative = amountStr.includes('-') || trimmed.includes('-') || /할인|DC|차감|쿠폰|마이너스/i.test(name);
-        let cleanAmountVal = amountStr.replace(/[^0-9]/g, '');
-        let amt = Number(cleanAmountVal);
+        let amountStr = cleanNum(parts[1], '0');
+        let isNegative = amountStr.includes('-') || /할인|DC|차감|쿠폰|마이너스/i.test(name);
+        let amt = Number(amountStr.replace(/[^0-9]/g, ''));
 
         if (amt > 0) {
-          let finalAmountFormatted = isNegative ? `-${amt}` : String(amt);
-          if (!resultData.overallElements.some(el => el.name === name)) {
-            resultData.overallElements.push({
-              name: name,
-              amount: finalAmountFormatted
-            });
-          }
+          resultData.overallElements.push({
+            name: name,
+            amount: isNegative ? `-${amt}` : String(amt)
+          });
         }
       }
+    }
+
+    // 방법 2 적용: 품목별 할인 총합 산출 및 동일 금액의 중복 집계성 ETC 상쇄 제거
+    const sumProductDiscounts = resultData.products.reduce((acc, p) => acc + Number(p.discount || 0), 0);
+    if (sumProductDiscounts > 0) {
+      resultData.overallElements = resultData.overallElements.filter(el => {
+        const val = Math.abs(Number(el.amount || 0));
+        const isDuplicateDiscount = (val === sumProductDiscounts) && /할인|차감|DC/i.test(el.name);
+        return !isDuplicateDiscount;
+      });
     }
 
     const sumProductsFinal = resultData.products.reduce((acc, p) => acc + Number(p.finalPrice), 0);
@@ -215,27 +203,21 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
     if (resultData.receiptTotal > 0) {
       const discrepancy = resultData.receiptTotal - calculatedTotal;
-      
       if (discrepancy === 0) {
         resultData.verificationStatus = 'MATCHED';
-        resultData.verificationMessage = '금액 이중 검증 완료: 품목 및 추가/할인 합계가 영수증 최종 결제 총액과 완벽히 일치합니다.';
+        resultData.verificationMessage = '금액 검증 완료';
       } else {
         resultData.verificationStatus = 'DISCREPANCY_AUTO_CORRECTED';
-        resultData.verificationMessage = `금액 오차 감지 및 자동 보정됨 (차액: ${discrepancy}원)`;
-        
+        resultData.verificationMessage = `금액 자동 보정 (${discrepancy}원)`;
         resultData.overallElements.push({
-          name: discrepancy < 0 ? "누락 할인/차감 보정" : "누락 추가 요금 보정",
+          name: discrepancy < 0 ? "누락 할인 보정" : "누락 추가 요금 보정",
           amount: String(discrepancy)
         });
       }
-    } else {
-      resultData.verificationStatus = 'NO_TOTAL_FOUND';
-      resultData.verificationMessage = '영수증 내 최종 결제 총액 인식 불가로 자체 품목 합계로 대체합니다.';
     }
 
     return res.status(200).json(resultData);
-
   } catch (error) {
-    return res.status(500).json({ error: error.message || '서버 내부 처리 오류가 발생했습니다.' });
+    return res.status(500).json({ error: error.message || '서버 내부 오류가 발생했습니다.' });
   }
 }
