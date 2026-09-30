@@ -8,19 +8,67 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   try {
-    const { image } = req.body;
+    const { image, deviceId } = req.body;
     if (!image) {
       return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
     }
 
-    const imageBase64 = image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+    // 1. 유효 기한 확인 (2026-10-16 18:00:00 KST)
+    const expireEnv = process.env.EXPIRATION_DATE || '2026-10-16T18:00:00+09:00';
+    if (Date.now() > new Date(expireEnv).getTime()) {
+      return res.status(403).json({ error: '사용 기간(10월 16일 18시)이 종료되었습니다.' });
+    }
 
+    // 2. Upstash Redis 환경 변수 정리 및 잔여 쿼터 확인
+    let rawKvUrl = process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+    const kvToken = process.env.KV_REST_API_TOKEN || process.env.STORAGE_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+
+    if (rawKvUrl && !rawKvUrl.startsWith('http')) {
+      rawKvUrl = `https://${rawKvUrl}`;
+    }
+    const kvUrl = rawKvUrl.replace(/\/+$/, '');
+
+    const QUOTA_PER_USER = Number(process.env.QUOTA_PER_USER || 100);
+    let remainingQuota = QUOTA_PER_USER;
+
+    if (kvUrl && kvToken) {
+      if (!deviceId) {
+        return res.status(403).json({ error: '인증되지 않은 기기입니다.' });
+      }
+
+      // 15대 기기 목록 자동 보장 (SADD)
+      await fetch(`${kvUrl}/sadd/receipt_allowed_devices/${deviceId}`, {
+        headers: { Authorization: `Bearer ${kvToken}` }
+      });
+
+      // 현재 사용량 확인
+      const usageKey = `usage:${deviceId}`;
+      const getUsageRes = await fetch(`${kvUrl}/get/${usageKey}`, {
+        headers: { Authorization: `Bearer ${kvToken}` }
+      });
+      const getUsageData = await getUsageRes.json();
+      const currentUsed = Number(getUsageData.result || 0);
+
+      if (currentUsed >= QUOTA_PER_USER) {
+        return res.status(403).json({ error: `부여된 분석 한도(${QUOTA_PER_USER}회)를 모두 소진하셨습니다.` });
+      }
+
+      // 사용량 1회 증가 (INCR)
+      const incrRes = await fetch(`${kvUrl}/incr/${usageKey}`, {
+        headers: { Authorization: `Bearer ${kvToken}` }
+      });
+      const incrData = await incrRes.json();
+      const newUsed = Number(incrData.result || currentUsed + 1);
+      remainingQuota = Math.max(0, QUOTA_PER_USER - newUsed);
+    }
+
+    // 3. Gemini Flash API 분석 호출
+    const imageBase64 = image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'Vercel 환경 변수에 GEMINI_API_KEY가 설정되지 않았습니다.' });
     }
 
-    // gemini-3.6-flash 고정 엔드포인트
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `전문 영수증 분석기입니다. JSON을 절대 출력하지 마십시오.
@@ -54,16 +102,10 @@ TOTAL: 영수증에_인쇄된_최종결제총액
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        generationConfig: {
-          max_output_tokens: 4000
-        },
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { max_output_tokens: 4000 },
         contents: [
           {
             parts: [
@@ -107,7 +149,8 @@ TOTAL: 영수증에_인쇄된_최종결제총액
       products: [],
       receiptTotal: 0,
       verificationStatus: 'NORMAL',
-      verificationMessage: ''
+      verificationMessage: '',
+      remainingQuota: remainingQuota
     };
 
     const cleanStr = (str) => (str ? str.replace(/^["']|["']$/g, '').trim() : '');
