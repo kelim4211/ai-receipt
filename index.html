@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>지능형 AI 가계지출 분석앱</title>
-
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bgGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%233b82f6'/%3E%3Cstop offset='50%25' stop-color='%232563eb'/%3E%3Cstop offset='100%25' stop-color='%234f46e5'/%3E%3C/linearGradient%3E%3Cfilter id='bookShadow' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='14' stdDeviation='14' flood-color='%23000' flood-opacity='0.22'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='512' height='512' rx='112' fill='url(%23bgGrad)'/%3E%3Ctext x='256' y='142' font-family='-apple-system,BlinkMacSystemFont,Pretendard,sans-serif' font-size='56' font-weight='900' fill='%23ffffff' text-anchor='middle' letter-spacing='-1.5'%3EAI 가계지출%3C/text%3E%3Cg filter='url(%23bookShadow)'%3E%3Cpath d='M96 215 c48 -15 110 -11 156 8 c3 1 7 1 10 0 c46 -19 108 -23 156 -8 c5 1 8 6 8 11 v188 c0 7 -6 11 -12 10 c-44 -13 -102 -9 -148 8 c-3 1 -6 1 -9 0 c-46 -17 -104 -21 -148 -8 c-6 2 -12 -2 -12 -9 V226 c0 -5 3 -9 7 -11 z' fill='%23fffbeb'/%3E%3Cline x1='256' y1='223' x2='256' y2='424' stroke='%23e2e8f0' stroke-width='3'/%3E%3Crect x='126' y='250' width='18' height='18' rx='4' fill='%23ea580c'/%3E%3Crect x='152' y='255' width='66' height='9' rx='4.5' fill='%2394a3b8'/%3E%3Crect x='126' y='292' width='18' height='18' rx='4' fill='%230284c7'/%3E%3Crect x='152' y='297' width='60' height='9' rx='4.5' fill='%2394a3b8'/%3E%3Crect x='126' y='334' width='18' height='18' rx='4' fill='%23dc2626'/%3E%3Crect x='152' y='339' width='70' height='9' rx='4.5' fill='%2394a3b8'/%3E%3Crect x='126' y='376' width='18' height='18' rx='4' fill='%2316a34a'/%3E%3Crect x='152' y='381' width='54' height='9' rx='4.5' fill='%2394a3b8'/%3E%3Ccircle cx='288' cy='259' r='4.5' fill='%2364748b'/%3E%3Crect x='303' y='255' width='56' height='9' rx='4.5' fill='%23334155'/%3E%3Cpath d='M374 257 l4.5 4.5 l9 -9' fill='none' stroke='%232563eb' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='288' cy='301' r='4.5' fill='%2364748b'/%3E%3Crect x='303' y='297' width='56' height='9' rx='4.5' fill='%23334155'/%3E%3Cpath d='M374 299 l4.5 4.5 l9 -9' fill='none' stroke='%232563eb' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='288' cy='343' r='4.5' fill='%2364748b'/%3E%3Crect x='303' y='339' width='56' height='9' rx='4.5' fill='%23334155'/%3E%3Cpath d='M374 341 l4.5 4.5 l9 -9' fill='none' stroke='%232563eb' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='288' cy='385' r='4.5' fill='%2364748b'/%3E%3Crect x='303' y='381' width='56' height='9' rx='4.5' fill='%23334155'/%3E%3Cpath d='M374 383 l4.5 4.5 l9 -9' fill='none' stroke='%232563eb' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E">
-
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
@@ -33,6 +30,7 @@
       0%, 100% { top: 5%; opacity: 0.2; }
       50% { top: 90%; opacity: 0.9; }
     }
+    
     .cropper-point {
       width: 18px !important;
       height: 18px !important;
@@ -42,30 +40,47 @@
       border-radius: 50% !important;
       touch-action: none !important;
     }
+    .cropper-point::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      background: transparent;
+    }
+    .cropper-point.point-n { top: -9px !important; }
+    .cropper-point.point-s { bottom: -9px !important; }
+    .cropper-point.point-w { left: -9px !important; }
+    .cropper-point.point-e { right: -9px !important; }
+    .cropper-point.point-nw { top: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-ne { top: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-sw { bottom: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
+    .cropper-point.point-se { bottom: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 접근 차단 오버레이 -->
+  <!-- 접근 차단 오버레이 (정원 초과 / 기간 만료) -->
   <div id="accessBlockedOverlay" class="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-6 text-center text-white hidden">
     <div class="w-16 h-16 rounded-2xl bg-rose-600/20 text-rose-500 flex items-center justify-center text-3xl mb-4 border border-rose-500/30">
       <i class="fa-solid fa-lock"></i>
     </div>
-    <h2 class="text-xl font-black mb-2" id="blockTitle">접속 권한 안내</h2>
+    <h2 class="text-xl font-black mb-2" id="blockTitle">접속 권한 제한</h2>
     <p class="text-sm text-slate-300 max-w-xs leading-relaxed mb-6" id="blockDesc">
-      유효한 전용 초대 링크를 통해 접속해 주세요.
+      허용된 15명의 등록 정원이 마감되었거나 유효 기간이 만료되었습니다.
     </p>
     <div class="bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-700 text-xs text-slate-400 space-y-1">
-      <p>본 서비스는 1인 1링크 전용으로 작동합니다.</p>
-      <p class="text-[10px] text-slate-500" id="userDisplayId"></p>
+      <p>본 앱은 지정된 사용자의 100회 한도 내에서 작동합니다.</p>
+      <p class="text-[10px] text-slate-500" id="deviceDisplayId"></p>
     </div>
   </div>
 
-  <!-- 이미지 자르기 모달 -->
-  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4">
+  <!-- 수동 이미지 자르기 모달 -->
+  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4 backdrop-blur-xs">
     <div class="flex items-center justify-between text-white border-b border-slate-700 pb-3">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (4방향 조절)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -77,11 +92,11 @@
     </div>
 
     <div class="space-y-2">
-      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리를 밀어 영수증 본문만 지정하세요.</p>
+      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리와 모서리를 밀어서 자유롭게 조절하세요.</p>
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
         <button type="button" onclick="confirmCrop()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-check"></i> <span>영역 선택 완료</span>
+          <i class="fa-solid fa-check"></i> <span>영역 자르기 완료</span>
         </button>
       </div>
     </div>
@@ -92,17 +107,18 @@
     <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-        <div class="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shrink-0">
-          <i class="fa-solid fa-receipt text-sm"></i>
+        <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shrink-0">
+          <i class="fa-solid fa-receipt text-lg"></i>
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-[10px] font-bold text-brand-300 leading-none mb-1">가계동향조사</p>
-          <h1 class="font-black text-sm tracking-tight text-white whitespace-nowrap leading-none">지능형 AI 가계지출 분석앱</h1>
+          <p class="text-[10px] font-black text-brand-300 tracking-tight leading-none mb-1">가계동향조사를 위한</p>
+          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 가계지출 분석앱</h1>
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <span id="quotaBadge" class="text-[11px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2.5 py-1 rounded-lg">
-          잔여 확인 중...
+        <!-- 잔여 쿼터 실시간 표시 배지 -->
+        <span id="quotaBadge" class="text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg">
+          잔여 100회
         </span>
         <button onclick="resetSystem()" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full active:bg-slate-700 transition" title="초기화">
           <i class="fa-solid fa-rotate-right text-xs"></i>
@@ -110,35 +126,30 @@
       </div>
     </header>
 
-    <!-- 마감 안내 바 -->
-    <div class="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center justify-center gap-1.5 text-amber-900 text-[11px] font-medium shrink-0">
-      <i class="fa-regular fa-clock text-amber-600 text-xs"></i>
-      <span>사용 기한: <strong class="font-black text-amber-950">10월 16일 18시까지</strong></span>
-    </div>
-
-    <!-- 본문 스크롤 영역 -->
+    <!-- 메인 스크롤 영역 -->
     <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-white">
       
+      <!-- 스캐너 섹션 -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
-            <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 스캔
+            <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 스캔 상태
           </span>
           <span id="scanStatusBadge" class="text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full">
             ● 대기 중 (0% 초기화됨)
           </span>
         </div>
 
-        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2">
+        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2" style="touch-action: auto;">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 scanner-line pointer-events-none"></div>
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
             <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center shadow-sm mb-1.5">
               <i class="fa-solid fa-receipt text-2xl text-brand-500"></i>
             </div>
             <p class="text-xs font-bold text-slate-600">카메라 촬영 또는 사진을 첨부하세요</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도가 높아집니다</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs cursor-zoom-in" style="touch-action: auto; user-select: auto;">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -178,6 +189,7 @@
             <span id="part1Date" class="font-black text-brand-700 text-sm">-</span>
           </div>
 
+          <!-- 상호명 [OCR] -->
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center gap-2">
               <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [OCR]</span>
@@ -274,69 +286,59 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // [전용 링크 방식] URL 파라미터(?u=...) 우선 인식
-    function getActiveUserCode() {
-      const urlParams = new URLSearchParams(window.location.search);
-      let userCode = urlParams.get('u');
-
-      if (userCode) {
-        userCode = userCode.trim().toLowerCase();
-        localStorage.setItem('receipt_auth_user', userCode);
-        return userCode;
+    // 1인 1기기 식별 토큰 발급 및 유지
+    function getOrCreateDeviceId() {
+      let id = localStorage.getItem('receipt_device_token');
+      if (!id) {
+        id = 'dev_' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        localStorage.setItem('receipt_device_token', id);
       }
-
-      const cachedCode = localStorage.getItem('receipt_auth_user');
-      if (cachedCode) return cachedCode;
-
-      return 'unauthorized_guest';
+      return id;
     }
 
-    const currentUserId = getActiveUserCode();
+    const currentDeviceId = getOrCreateDeviceId();
 
-    function updateQuotaDisplay(remaining, total = 200) {
+    function updateQuotaDisplay(remaining, total = 100) {
       const qb = document.getElementById('quotaBadge');
       if (!qb) return;
-
       qb.innerText = `잔여 ${remaining}/${total}회`;
-
       if (remaining <= 0) {
-        qb.className = 'text-[11px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-1 rounded-lg';
         const analyzeBtn = document.getElementById('analyzeBtn');
         if (analyzeBtn) {
           analyzeBtn.disabled = true;
           analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
-          analyzeBtn.innerHTML = '<i class="fa-solid fa-ban"></i> <span>사용 한도 소진</span>';
+          analyzeBtn.innerHTML = '<i class="fa-solid fa-ban"></i> <span>사용 한도 소진 (100/100)</span>';
         }
       } else if (remaining <= 10) {
-        qb.className = 'text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-lg';
       } else {
-        qb.className = 'text-[11px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2.5 py-1 rounded-lg';
+        qb.className = 'text-[10px] font-black bg-blue-500/20 text-brand-300 border border-brand-500/40 px-2 py-1 rounded-lg';
       }
     }
 
-    async function verifyUserAccess() {
-      if (currentUserId === 'unauthorized_guest') {
-        showAccessBlocked('개인 전용 링크(?u=코드)를 통해서만 이용 가능합니다.');
-        return false;
-      }
-
+    async function verifyDeviceAccess() {
       try {
-        const res = await fetch(`/api/analyze?userId=${encodeURIComponent(currentUserId)}`, {
-          method: 'GET'
+        const res = await fetch('/api/auth-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: currentDeviceId })
         });
         const data = await res.json();
         
-        if (!res.ok || data.allowed === false) {
-          showAccessBlocked(data.message || '접속 권한이 없거나 만료되었습니다.');
+        if (!res.ok || !data.allowed) {
+          showAccessBlocked(data.message || '접속이 차단되었습니다.');
           return false;
         }
 
         if (typeof data.remaining === 'number') {
-          updateQuotaDisplay(data.remaining, data.totalQuota || 200);
+          updateQuotaDisplay(data.remaining, data.totalQuota || 100);
         }
         return true;
       } catch (err) {
-        console.warn('사용자 인증 네트워크 오류:', err);
+        console.warn('기기 검증 네트워크 일시 오류:', err);
         return true;
       }
     }
@@ -344,33 +346,42 @@
     function showAccessBlocked(message) {
       const overlay = document.getElementById('accessBlockedOverlay');
       const desc = document.getElementById('blockDesc');
-      const userEl = document.getElementById('userDisplayId');
+      const devIdEl = document.getElementById('deviceDisplayId');
       if (overlay) overlay.classList.remove('hidden');
       if (desc) desc.innerText = message;
-      if (userEl) userEl.innerText = `사용자 식별코드: ${currentUserId}`;
+      if (devIdEl) devIdEl.innerText = `기기 식별자: ${currentDeviceId.substring(0, 16)}...`;
     }
 
     window.onload = function() {
-      verifyUserAccess();
+      verifyDeviceAccess();
       clearAnalysisResidue();
     };
 
     function openCompactPopup(urlToOpen) {
       if (!urlToOpen || urlToOpen.includes("정보없음") || urlToOpen.includes("미확인")) return;
-      window.open(urlToOpen, '_blank');
+      const popupWidth = 480;
+      const popupHeight = 720;
+      const left = (window.screen.width - popupWidth) / 2;
+      const top = (window.screen.height - popupHeight) / 2;
+      window.open(urlToOpen, 'IndependentProductSearchPopup', `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`);
     }
 
     function extractPureBrand(rawName) {
       if (!rawName || rawName.includes("정보없음")) return "";
-      let brand = rawName.trim().replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사/g, "").replace(/[_/]/g, " ");
+      
+      let brand = rawName.trim();
+      brand = brand.replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사/g, "");
+      brand = brand.replace(/[_/]/g, " ");
       brand = brand.replace(/\s*[가-힣A-Za-z0-9]+(본점|지점|점|호점|역점|센터)\b.*$/g, "");
       brand = brand.replace(/(본점|지점|직영점)\b.*$/g, "");
+      
       if (brand.includes("다이소")) return "다이소";
       if (brand.includes("이마트")) return "이마트";
       if (brand.includes("홈플러스")) return "홈플러스";
       if (brand.includes("코스트코")) return "코스트코";
       if (brand.includes("올리브영")) return "올리브영";
       if (brand.includes("노브랜드")) return "노브랜드";
+
       brand = brand.replace(/\s+/g, " ").trim();
       return brand.length >= 2 ? brand : "";
     }
@@ -378,8 +389,10 @@
     function getSmartSearchURL(queryStr, brandName = "") {
       let queryText = (queryStr || "").trim();
       let cleanBrand = extractPureBrand(brandName) || extractPureBrand(currentSearchBrand) || extractPureBrand(currentShopName);
-      let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand}${queryText}` : queryText;
+
+      let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand} ${queryText}` : queryText;
       fullQuery = fullQuery.replace(/\s+/g, " ").trim();
+
       if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
       return `https://search.naver.com/search.naver?query=${encodeURIComponent(fullQuery)}`;
     }
@@ -401,10 +414,15 @@
       
       const copyBtn = document.getElementById('copyAddressBtn');
       if(copyBtn) copyBtn.classList.add('hidden');
+      
       const badgeCont = document.getElementById('shopStatusBadgeContainer');
       if(badgeCont) badgeCont.innerHTML = '';
+      
       const reasonCont = document.getElementById('shopReasonContainer');
-      if(reasonCont) { reasonCont.innerText = ''; reasonCont.classList.add('hidden'); }
+      if(reasonCont) {
+        reasonCont.innerText = '';
+        reasonCont.classList.add('hidden');
+      }
       
       const countBadge = document.getElementById('productCountBadge');
       if(countBadge) countBadge.innerText = "총 0개 품목";
@@ -422,7 +440,10 @@
       }
 
       const img = document.getElementById('uploadedReceiptImg');
-      if(img) { img.classList.add('hidden'); img.src = ""; }
+      if(img) {
+        img.classList.add('hidden');
+        img.src = "";
+      }
       const previewCont = document.getElementById('receiptPreviewContainer');
       if(previewCont) previewCont.classList.remove('hidden');
     }
@@ -464,11 +485,18 @@
           zoomable: false,
           rotatable: false,
           scalable: false,
+          toggleDragModeOnDblclick: false,
           responsive: true,
+          restore: false,
+          checkCrossOrigin: false,
           modal: true,
           guides: true,
           center: true,
+          highlight: false,
+          background: false,
           autoCrop: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
           minCropBoxWidth: 80,
           minCropBoxHeight: 80
         });
@@ -540,13 +568,18 @@
       document.getElementById('part1BizNo').innerText = '정보없음';
       document.getElementById('part1Address').innerText = '정보없음';
       document.getElementById('part1Phone').innerText = '정보없음';
-
+      
       const copyBtn = document.getElementById('copyAddressBtn');
       if(copyBtn) copyBtn.classList.add('hidden');
+      
       const badgeCont = document.getElementById('shopStatusBadgeContainer');
       if(badgeCont) badgeCont.innerHTML = '';
+      
       const reasonCont = document.getElementById('shopReasonContainer');
-      if(reasonCont) { reasonCont.innerText = ''; reasonCont.classList.add('hidden'); }
+      if(reasonCont) {
+        reasonCont.innerText = '';
+        reasonCont.classList.add('hidden');
+      }
 
       const cardListContainer = document.getElementById('productCardList');
       if(cardListContainer) {
@@ -568,7 +601,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             image: activeReceiptBase64,
-            userId: currentUserId 
+            deviceId: currentDeviceId 
           })
         });
 
@@ -587,7 +620,7 @@
         if(scannerLine) scannerLine.classList.add('hidden');
         
         if (typeof result.remainingQuota === 'number') {
-          updateQuotaDisplay(result.remainingQuota, 200);
+          updateQuotaDisplay(result.remainingQuota, 100);
         }
 
         renderAnalysisUI(result);
@@ -791,7 +824,7 @@
           .trim();
       }
 
-      let targetKeyword = cleanShopName ? `${cleanShopName}${shortAddress}` : shortAddress;
+      let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
       targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
 
       let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword)}`;
