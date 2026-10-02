@@ -39,7 +39,7 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* --- 모바일 프리폼 엣지 드래그 스타일 --- */
+    /* --- [정비] 모바일 프리폼 엣지 드래그 스타일 --- */
     .cropper-point { display: none !important; }
 
     .cropper-view-box {
@@ -55,7 +55,7 @@
       touch-action: none;
     }
 
-    /* 상단 테두리: 4px 두께 (두 배 확장) */
+    /* 상단 테두리: 4px 두께 */
     .cropper-line.line-n { 
       top: 0 !important; 
       height: 4px !important; 
@@ -63,7 +63,7 @@
     }
     .cropper-line.line-n::after { top: -20px; left: 0; right: 0; height: 44px; }
 
-    /* 하단 테두리: 4px 두께 (두 배 확장) */
+    /* 하단 테두리: 4px 두께 */
     .cropper-line.line-s { 
       bottom: 0 !important; 
       height: 4px !important; 
@@ -406,7 +406,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [핵심 설정: 좌우 100% 밀착 + 상하 98% 안전 배치]
+    // [핵심 해결] setTimeout 50ms로 Cropper 내부 비동기 덮어쓰기 무력화 + 좌우 100%, 상하 98% 강제 주입
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -429,14 +429,14 @@
 
         imageToCrop.onload = function() {
           cropperInstance = new Cropper(imageToCrop, {
-            viewMode: 2,               // 캔버스가 절대 지정된 뷰포트를 벗어나지 않게 고정
-            autoCropArea: 1.0,         // 기본 초기화
-            dragMode: 'none',          // 바깥 터치 시 영역 해제 방지
-            movable: false,            // 캔버스 자체 이동 차단 (고정)
-            zoomable: false,           // 핀치 줌 차단
+            viewMode: 2,
+            autoCropArea: 1.0,         // 기본 1.0으로 초기화
+            dragMode: 'none',
+            movable: false,
+            zoomable: false,
             rotatable: false,
             scalable: false,
-            responsive: false,         // 화면 크기 변동에 따른 재계산 차단
+            responsive: false,
             toggleDragModeOnDblclick: false,
             modal: true,
             guides: true,
@@ -444,22 +444,25 @@
             highlight: false,
             background: false,
             autoCrop: true,
-            cropBoxMovable: false,     // 테두리 조절 시 전체 박스 밀림 방지
-            cropBoxResizable: true,    // 테두리 선 리사이징 활성화
+            cropBoxMovable: false,
+            cropBoxResizable: true,
             minCropBoxWidth: 50,
             minCropBoxHeight: 50,
             ready() {
-              // [핵심] 좌우 100%(1.0), 상하 98%(0.98) 정밀 분리 배치
-              const canvasData = this.cropper.getCanvasData();
-              const targetHeight = canvasData.height * 0.98;
-              const verticalMargin = (canvasData.height - targetHeight) / 2; // 상하 각 1% 안전 여백 분배
+              const self = this.cropper;
+              // [핵심] 라이브러리의 내부 재계산 직후 실행되도록 비동기 지연 강제 적용
+              setTimeout(() => {
+                const canvasData = self.getCanvasData();
+                const targetHeight = canvasData.height * 0.98;
+                const verticalMargin = (canvasData.height - targetHeight) / 2;
 
-              this.cropper.setCropBoxData({
-                left: canvasData.left,                // 좌우 100% 밀착 (여백 0)
-                width: canvasData.width,              // 좌우 가로 폭 전체 100%
-                top: canvasData.top + verticalMargin, // 상단 1% 들여쓰기
-                height: targetHeight                  // 상하 98% 높이
-              });
+                self.setCropBoxData({
+                  left: canvasData.left,
+                  width: canvasData.width,
+                  top: canvasData.top + verticalMargin,
+                  height: targetHeight
+                });
+              }, 60);
             }
           });
         };
