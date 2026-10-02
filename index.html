@@ -39,7 +39,7 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* --- [정비] 모바일 프리폼 엣지 드래그 스타일 --- */
+    /* --- [핵심] 조절점 없이 두꺼운 테두리만 직접 만지는 엣지 드래그 스타일 --- */
     .cropper-point { display: none !important; }
 
     .cropper-view-box {
@@ -69,7 +69,7 @@
 
     .cropper-modal { background-color: rgba(15, 23, 42, 0.75) !important; }
 
-    /* 컨테이너 내부 스크롤 완전 차단 */
+    /* 화면 스크롤 절대 불가 및 컨테이너 제한 */
     .cropper-container {
       width: 100% !important;
       height: 100% !important;
@@ -79,10 +79,10 @@
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 수동 이미지 자르기 모달 (절대 좌표 및 safe-area 고정) -->
-  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-3 select-none overflow-hidden" style="height: 100%; max-height: 100dvh; touch-action: none;">
+  <!-- 수동 이미지 자르기 모달 (화면 100% 고정, 툴바 영역까지 완벽 대응) -->
+  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-3 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
     
-    <!-- 상단 헤더 (고정 44px) -->
+    <!-- 상단 헤더 -->
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
         <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
@@ -92,16 +92,15 @@
       </button>
     </div>
     
-    <!-- [원인 해결 핵심] 상하단 툴바를 감안한 절대 가용 높이 설정 (calc(100dvh - 180px)) -->
-    <div class="relative w-full my-2 bg-black rounded-xl overflow-hidden p-2 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 180px); max-height: calc(100dvh - 180px); touch-action: none;">
+    <!-- [핵심] 상하좌우 안전 여백을 둔 뷰포트 액자 (두 번째 사진처럼 상하 여백 확보) -->
+    <div class="relative w-full my-2 bg-black rounded-xl overflow-hidden p-3 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 190px); max-height: calc(100dvh - 190px); touch-action: none;">
       <div id="cropperWrapper" class="w-full h-full relative overflow-hidden flex items-center justify-center">
-        <!-- display: none 제거, Cropper가 정확한 비율을 읽을 수 있도록 설정 -->
-        <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full object-contain">
+        <img id="imageToCrop" src="" alt="자르기 원본" style="max-height: 100%; max-width: 100%; display: block;">
       </div>
     </div>
 
-    <!-- 하단 푸터 컨트롤 (고정 높이) -->
-    <div class="space-y-2 px-1 shrink-0 pb-2">
+    <!-- 하단 푸터 컨트롤 -->
+    <div class="space-y-2 px-1 shrink-0 pb-1">
       <p class="text-[11px] text-slate-300 text-center font-medium leading-tight">
         조절점 없이 <strong class="text-brand-400">파란 테두리 선 전체</strong>를 손가락으로 잡고 밀어서 조절하세요.
       </p>
@@ -395,7 +394,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [정밀 보정] 사진 첨부 및 Cropper 초기화
+    // [두 번째 사진처럼 상하좌우 테두리가 100% 들어오도록 정밀 초기화]
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -416,17 +415,18 @@
           cropperInstance = null;
         }
 
-        // 이미지 로딩 완료 후 정확한 크기로 Cropper 생성
         imageToCrop.onload = function() {
+          // viewMode: 2를 사용하여 이미지를 액자 컨테이너 내부에 100% 축소(contain)시키고, 
+          // autoCropArea: 0.92로 상하좌우에 안정적인 검은 여백을 확보하여 4변 테두리를 모두 노출
           cropperInstance = new Cropper(imageToCrop, {
-            viewMode: 1,               // 캔버스가 절대 지정된 뷰포트를 벗어나지 않게 고정
-            autoCropArea: 0.90,        // 90% 안전 비율로 시작하여 상하좌우 4개 테두리가 화면 중앙에 무조건 다 보이게 보장
-            dragMode: 'none',          // 배경 터치 시 박스 사라짐 방지
+            viewMode: 2,               // [핵심] 이미지가 컨테이너 영역 밖으로 1px도 나가지 않도록 완전 가둠
+            autoCropArea: 0.92,        // [핵심] 상하좌우 안전 여백 안쪽에 파란색 테두리 4변 100% 온전 노출
+            dragMode: 'none',          // 바깥 터치 시 영역 사라짐 방지
             movable: false,            // 캔버스 자체 이동 차단 (고정)
             zoomable: false,           // 핀치 줌 차단
             rotatable: false,
             scalable: false,
-            responsive: false,         // 화면 크기 변동에 따른 재계산 차단
+            responsive: false,         // 주소창 변화에 따른 덜컥거림 차단
             toggleDragModeOnDblclick: false,
             modal: true,
             guides: true,
@@ -434,20 +434,10 @@
             highlight: false,
             background: false,
             autoCrop: true,
-            cropBoxMovable: false,     // 테두리 조절 시 전체 박스 이동 방지
+            cropBoxMovable: false,     // 테두리 조절 시 전체 박스 밀림 방지
             cropBoxResizable: true,    // 테두리 선 리사이징 활성화
             minCropBoxWidth: 50,
-            minCropBoxHeight: 50,
-            ready() {
-              // 최초 렌더링 시 상하좌우 테두리가 화면 안에 온전히 나타나도록 자동 정렬
-              const canvasData = this.cropper.getCanvasData();
-              this.cropper.setCropBoxData({
-                left: canvasData.left,
-                top: canvasData.top,
-                width: canvasData.width,
-                height: canvasData.height
-              });
-            }
+            minCropBoxHeight: 50
           });
         };
       };
