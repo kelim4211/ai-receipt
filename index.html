@@ -406,7 +406,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [원상복구 핵심: 사진 안쪽으로 안전하게 좁혀진 autoCropArea: 0.90 적용]
+    // [원상복구 핵심: 사진 안쪽으로 안전하게 좁혀진 autoCropArea: 0.95 적용]
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
