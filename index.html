@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>지능형 인공지능 가계지출 분석기</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,10 +27,9 @@
     
     html, body {
       width: 100%;
-      height: 100%;
-      overflow: hidden;
-      overscroll-behavior: none;
+      min-height: 100%;
       background-color: #f8fafc;
+      touch-action: manipulation;
     }
 
     .moving-light { animation: scan-motion 2s ease-in-out infinite; }
@@ -39,10 +38,10 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* 다른 기본 조절점 숨김 */
+    /* 자르기 화면 전용 조절점 스타일 */
     .cropper-point { display: none !important; }
 
-    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 (높이 최소화, 글씨 가림 방지) */
+    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 */
     .cropper-point.point-s {
       display: block !important;
       bottom: -4px !important;
@@ -59,7 +58,6 @@
       z-index: 30 !important;
     }
 
-    /* 얇은 조절점 위아래로 손가락 터치 인식 영역(36px) 광폭화 */
     .cropper-point.point-s::after {
       content: '';
       position: absolute;
@@ -84,7 +82,6 @@
       touch-action: none;
     }
 
-    /* 상단 테두리: 4px */
     .cropper-line.line-n { 
       top: 0 !important; 
       height: 4px !important; 
@@ -92,7 +89,6 @@
     }
     .cropper-line.line-n::after { top: -20px; left: 0; right: 0; height: 44px; }
 
-    /* 하단 테두리: 4px */
     .cropper-line.line-s { 
       bottom: 0 !important; 
       height: 4px !important; 
@@ -100,7 +96,6 @@
     }
     .cropper-line.line-s::after { bottom: -20px; left: 0; right: 0; height: 44px; }
 
-    /* 좌우 테두리 핸들: 2.5px */
     .cropper-line.line-w { left: 0 !important; width: 2.5px !important; background-color: #2563eb !important; }
     .cropper-line.line-w::after { left: -20px; top: 0; bottom: 0; width: 40px; }
 
@@ -120,7 +115,6 @@
 
   <!-- 수동 이미지 자르기 모달 -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-2 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
-    <!-- 상단 머리글 -->
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
         <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
@@ -130,14 +124,12 @@
       </button>
     </div>
     
-    <!-- 영수증 표시 공간 극대화 및 하단 타원 조절점 안전 여백 구역 -->
     <div class="relative w-full my-1 bg-black rounded-xl overflow-hidden p-2 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 110px); max-height: calc(100dvh - 110px); touch-action: none;">
       <div id="cropperWrapper" class="w-full h-full relative overflow-hidden flex items-center justify-center">
         <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full object-contain">
       </div>
     </div>
 
-    <!-- 하단 푸터 (버튼만 배치) -->
     <div class="px-1 shrink-0 pb-1">
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-800 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
@@ -148,7 +140,8 @@
     </div>
   </div>
 
-  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative pb-20 border-x border-slate-200">
+  <!-- 메인 프레임 -->
+  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative border-x border-slate-200">
     
     <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-md">
@@ -168,10 +161,10 @@
       </div>
     </header>
 
-    <!-- 메인 스크롤 영역 -->
-    <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-white">
+    <!-- 메인 분석 내용 영역 -->
+    <main class="flex-1 p-4 space-y-4 bg-white pb-24">
       
-      <!-- 스캐너 섹션 (첨부 코드의 border-2 border-slate-200 디자인 사용) -->
+      <!-- 스캐너 섹션 (첨부 코드 테두리 디자인 유지)[cite: 11] -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
@@ -182,8 +175,8 @@
           </span>
         </div>
 
-        <!-- [핵심] 첨부 코드 그대로 적용된 점선 테두리 디자인: border-2 border-dashed border-slate-300 -->
-        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2" style="touch-action: auto;">
+        <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지[cite: 11] -->
+        <div class="relative w-full min-h-[190px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-2">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
@@ -194,7 +187,7 @@
             <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs cursor-zoom-in" style="touch-action: auto; user-select: auto;">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -306,7 +299,7 @@
     </main>
 
     <!-- 하단 네비게이션 -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
       <button type="button" onclick="scrollToTop()" class="flex flex-col items-center text-brand-600 font-black">
         <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/스캔</span>
       </button>
@@ -330,7 +323,7 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // 줌 동기화를 위한 상대 좌표 비율 보관 변수
+    // 줌 및 이동 시 테두리 비율 동기화를 위한 핵심 상태값
     let syncBoxRatio = null;
 
     window.onload = function() { 
@@ -439,7 +432,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // viewMode 0 적용: 두 손가락 확대 시 영역 밖 확장 허용 + 테두리 1:1 동시 확대
+    // [핵심] 확대/축소 시 테두리도 1:1로 함께 확대/축소 동기화되는 엔진
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -465,9 +458,9 @@
             viewMode: 0,
             autoCropArea: 0.98,
             dragMode: 'none',
-            movable: true,
-            zoomable: true,
-            zoomOnTouch: true,
+            movable: true,             // 두 손가락으로 사진 이동 허용
+            zoomable: true,            // 두 손가락으로 핀치 줌 확대/축소 허용
+            zoomOnTouch: true,         // 모바일 터치 제스처 줌 활성화
             zoomOnWheel: false,
             rotatable: false,
             scalable: false,
@@ -479,14 +472,15 @@
             highlight: false,
             background: false,
             autoCrop: true,
-            cropBoxMovable: false,
-            cropBoxResizable: true,
+            cropBoxMovable: false,     // 테두리 드래그 시 박스 통째로 밀림 방지
+            cropBoxResizable: true,    // 하단 조절점 및 테두리 리사이징 활성화
             minCropBoxWidth: 50,
             minCropBoxHeight: 50,
             ready() {
               const self = this.cropper;
               setTimeout(() => {
                 const canvasData = self.getCanvasData();
+                // 0.97 비율: 영수증 면적을 최대로 넓히면서 하단 타원 조절점이 1px도 잘리지 않도록 배치
                 const targetHeight = canvasData.height * 0.97;
                 const verticalMargin = (canvasData.height - targetHeight) / 2;
 
@@ -498,6 +492,7 @@
                 };
                 self.setCropBoxData(initialBox);
 
+                // 이미지와 테두리의 상대 비율 저장 (자석 결합)
                 syncBoxRatio = {
                   leftRatio: (initialBox.left - canvasData.left) / canvasData.width,
                   topRatio: (initialBox.top - canvasData.top) / canvasData.height,
@@ -506,6 +501,7 @@
                 };
               }, 60);
             },
+            // 사용자가 조절점을 당겨서 영역을 바꿨을 때 최신 비율 업데이트
             cropend() {
               if (!this.cropper) return;
               const canvasData = this.cropper.getCanvasData();
@@ -519,6 +515,7 @@
                 };
               }
             },
+            // [핵심] 확대 및 축소 시 테두리도 1:1로 동일 비율로 동시 확대/축소
             zoom() {
               if (!this.cropper || !syncBoxRatio) return;
               const self = this.cropper;
@@ -543,13 +540,13 @@
       if (!cropperInstance) return;
 
       const croppedCanvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1200,
-        maxHeight: 1200,
+        maxWidth: 1400,
+        maxHeight: 1400,
         imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'medium'
+        imageSmoothingQuality: 'high'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.80);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -667,7 +664,7 @@
 
       const scanBadge = document.getElementById('scanStatusBadge');
       if (scanBadge) {
-        scanBadge.innerText = '● 분석 완료';
+        scanBadge.innerText = '● 분석 완료 (두 손가락으로 화면 전체 확대 가능)';
         scanBadge.className = 'text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
 
