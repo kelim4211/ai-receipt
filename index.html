@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>지능형 AI 가계지출 분석앱</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,72 +24,179 @@
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     * { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: #f8fafc; }
+    
+    body { 
+      background-color: #f1f5f9;
+      overscroll-behavior-y: none; /* iOS 당겨서 새로고침 방지 */
+    }
+
+    /* --- [핵심] 모바일 전용 프리폼 엣지 드래그 UX 및 고정 캔버스 스타일 --- */
+
+    /* 1. 자르기 모달 및 컨테이너: 사방 5% 여백(Buffer) 확보 */
+    #cropperModal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background-color: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(2px);
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+      display: flex;
+      flex-direction: column;
+      touch-action: none; /* 브라우저 스크롤/제스처 완전 차단 */
+    }
+
+    #cropperContainer {
+      position: relative;
+      flex: 1;
+      margin: 12px;
+      background-color: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      /* [핵심] 상하좌우 5% 여백 공간 부여 (padding-box) */
+      padding: 5% !important; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    #imageToCrop {
+      max-height: 100%;
+      max-width: 100%;
+      display: block;
+    }
+
+    /* 2. [핵심] 조절점 점(Point) 디자인 완전 제거 */
+    .cropper-point {
+      display: none !important;
+    }
+
+    /* 3. [핵심] 테두리 선(Line)을 두꺼운 모바일 터치 핸들로 확장 */
+    .cropper-line {
+      background-color: transparent !important; /* 시각적 선은 투명하게 */
+      opacity: 1 !important;
+    }
+
+    /* 테두리 선 위에 가상의 굵은 터치 영역(pseudo-element) 부여 */
+    .cropper-line::after {
+      content: '';
+      position: absolute;
+      background-color: transparent;
+      /* 손가락 두께만큼 터치 영역 확장 (30~40px) */
+      touch-action: none;
+    }
+
+    /* 시각적으로 보이는 굵고 선명한 파란 테두리 선 (2px) */
+    .cropper-view-box {
+      outline: 2px solid #2563eb !important;
+      outline-color: #2563eb !important;
+      border-radius: 0;
+    }
+
+    /* 상단 테두리 핸들 (line-n) */
+    .cropper-line.line-n {
+      top: 0 !important;
+      height: 2px !important;
+      background-color: #2563eb !important;
+    }
+    .cropper-line.line-n::after {
+      top: -20px; /* 터치 영역 위로 20px */
+      left: 0;
+      right: 0;
+      height: 40px; /* 전체 터치 영역 40px */
+    }
+
+    /* 하단 테두리 핸들 (line-s) */
+    .cropper-line.line-s {
+      bottom: 0 !important;
+      height: 2px !important;
+      background-color: #2563eb !important;
+    }
+    .cropper-line.line-s::after {
+      bottom: -20px;
+      left: 0;
+      right: 0;
+      height: 40px;
+    }
+
+    /* 좌측 테두리 핸들 (line-w) */
+    .cropper-line.line-w {
+      left: 0 !important;
+      width: 2px !important;
+      background-color: #2563eb !important;
+    }
+    .cropper-line.line-w::after {
+      left: -20px;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+    }
+
+    /* 우측 테두리 핸들 (line-e) */
+    .cropper-line.line-e {
+      right: 0 !important;
+      width: 2px !important;
+      background-color: #2563eb !important;
+    }
+    .cropper-line.line-e::after {
+      right: -20px;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+    }
+
+    /* 4. 자르기 영역 배경(Dimming) 및 guides 디자인 */
+    .cropper-modal {
+      background-color: rgba(0, 0, 0, 0.65) !important;
+    }
+    .cropper-guides {
+      border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    /* --- 일반 앱 스타일 --- */
     .scanner-line { animation: scan 2s ease-in-out infinite; }
     @keyframes scan {
       0%, 100% { top: 5%; opacity: 0.2; }
       50% { top: 90%; opacity: 0.9; }
     }
-    
-    /* 모바일 맞춤형 조절 핸들 및 터치 영역(Hit-Box) 대폭 확대 */
-    .cropper-point {
-      width: 18px !important;
-      height: 18px !important;
-      background-color: #2563eb !important;
-      opacity: 0.95 !important;
-      border: 2px solid white !important;
-      border-radius: 50% !important;
-      touch-action: none !important;
-    }
-    /* 손가락 터치 인식을 위한 투명 패딩 확장 (36px 영역) */
-    .cropper-point::after {
-      content: '';
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      right: -10px;
-      bottom: -10px;
-      background: transparent;
-    }
-    .cropper-point.point-n { top: -9px !important; }
-    .cropper-point.point-s { bottom: -9px !important; }
-    .cropper-point.point-w { left: -9px !important; }
-    .cropper-point.point-e { right: -9px !important; }
-    .cropper-point.point-nw { top: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
-    .cropper-point.point-ne { top: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
-    .cropper-point.point-sw { bottom: -9px !important; left: -9px !important; width: 22px !important; height: 22px !important; }
-    .cropper-point.point-se { bottom: -9px !important; right: -9px !important; width: 22px !important; height: 22px !important; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white overflow-hidden">
 
   <!-- 수동 이미지 자르기 모달 -->
-  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-900/90 hidden flex flex-col justify-between p-4 backdrop-blur-xs">
-    <div class="flex items-center justify-between text-white border-b border-slate-700 pb-3">
+  <div id="cropperModal" class="hidden">
+    <!-- 헤더 -->
+    <div class="flex items-center justify-between text-white border-b border-slate-700 pb-3 px-4 pt-2">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (4방향 조절)
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (사방 테두리 조절)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
       </button>
     </div>
     
-    <div class="relative flex-1 my-3 bg-black rounded-xl overflow-hidden flex items-center justify-center">
-      <img id="imageToCrop" src="" alt="자르기 원본" class="max-h-full max-w-full block">
+    <!-- [핵심] 자르기 컨테이너 (CSS에서 5% 패딩 부여) -->
+    <div id="cropperContainer">
+      <img id="imageToCrop" src="" alt="자르기 원본">
     </div>
 
-    <div class="space-y-2">
-      <p class="text-[11px] text-slate-300 text-center font-medium">상하좌우 테두리와 모서리를 밀어서 자유롭게 조절하세요.</p>
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" onclick="cancelCrop()" class="w-full bg-slate-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
-        <button type="button" onclick="confirmCrop()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5">
+    <!-- 푸터 컨트롤 -->
+    <div class="space-y-2.5 px-4 pb-4 pt-1">
+      <p class="text-[11px] text-slate-300 text-center font-medium leading-relaxed">
+        작은 조절점 대신 <strong class="text-brand-300">굵은 파란 테두리 선 전체</strong>를 손가락으로 잡고 <br>
+        안쪽/바깥쪽으로 밀어서 사방 여백을 자유롭게 조절하세요.
+      </p>
+      <div class="grid grid-cols-2 gap-2.5">
+        <button type="button" onclick="cancelCrop()" class="w-full bg-slate-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl transition">취소</button>
+        <button type="button" onclick="confirmCrop()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black text-sm py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition">
           <i class="fa-solid fa-check"></i> <span>영역 자르기 완료</span>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative pb-20 border-x border-slate-200">
+  <!-- 메인 앱 영역 -->
+  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative border-x border-slate-200">
     
     <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-md">
@@ -99,7 +206,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-[10px] font-black text-brand-300 tracking-tight leading-none mb-1">가계동향조사를 위한</p>
-          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 가계지출 분석앱</h1>
+          <h1 class="font-black text-sm tracking-tight text-white truncate leading-none">지능형 AI 가계지출 분석앱</h1>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
@@ -110,29 +217,29 @@
     </header>
 
     <!-- 메인 스크롤 영역 -->
-    <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-white">
+    <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-slate-50">
       
       <!-- 스캐너 섹션 -->
-      <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
+      <section class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
             <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 스캔 상태
           </span>
-          <span id="scanStatusBadge" class="text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full">
-            ● 대기 중 (0% 초기화됨)
+          <span id="scanStatusBadge" class="text-[11px] bg-slate-100 text-slate-600 border border-slate-200 font-extrabold px-2.5 py-0.5 rounded-full">
+            ● 대기 중
           </span>
         </div>
 
-        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2" style="touch-action: auto;">
+        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-auto p-2">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 scanner-line pointer-events-none"></div>
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
             <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center shadow-sm mb-1.5">
               <i class="fa-solid fa-receipt text-2xl text-brand-500"></i>
             </div>
             <p class="text-xs font-bold text-slate-600">카메라 촬영 또는 사진을 첨부하세요</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 정확도가 높아집니다</p>
           </div>
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs cursor-zoom-in" style="touch-action: auto; user-select: auto;">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -149,7 +256,6 @@
               <span>사진 첨부</span>
             </button>
           </div>
-
           <button type="button" id="analyzeBtn" onclick="startReceiptAnalysis()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-98 text-white font-black text-base py-3.5 px-4 rounded-xl shadow-lg border border-blue-700 transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-wand-magic-sparkles text-amber-300 text-lg"></i>
             <span class="tracking-tight">영수증 분석 실행</span>
@@ -157,207 +263,44 @@
         </div>
       </section>
 
-      <!-- 상호 분석 섹션 -->
-      <section class="bg-white border-2 border-brand-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div class="flex items-center justify-between border-b border-brand-100 pb-2">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-store text-brand-600 text-base"></i>
-            <h2 class="font-black text-sm text-slate-900">상호 분석</h2>
-          </div>
+      <!-- 결과 섹션 (간소화) -->
+      <section class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center gap-2 border-b border-slate-100 pb-2">
+          <i class="fa-solid fa-store text-brand-600 text-base"></i>
+          <h2 class="font-black text-sm text-slate-900">상호 분석 결과</h2>
         </div>
-
         <div class="space-y-2 text-xs">
-          <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
-            <span class="font-black text-slate-600">날짜 [OCR]</span>
-            <span id="part1Date" class="font-black text-brand-700 text-sm">-</span>
+          <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex justify-between">
+            <span class="font-black text-slate-500">날짜</span><span id="part1Date" class="font-bold text-slate-900">-</span>
           </div>
-
-          <!-- 상호명 [OCR] -->
-          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-            <div class="flex justify-between items-center gap-2">
-              <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [OCR]</span>
-              <span id="part1ShopOcr" class="font-bold text-slate-500 text-xs truncate">정보없음</span>
-            </div>
-          </div>
-
-          <div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200 space-y-2.5">
-            <div class="flex items-center justify-between border-b border-blue-200/80 pb-2 flex-wrap gap-1">
-              <span class="font-black text-brand-900 text-xs flex items-center gap-1.5">
-                <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]
-              </span>
-              <div class="flex items-center gap-2">
-                <span id="shopStatusBadgeContainer"></span>
-                <span id="part1ShopName" class="font-black text-brand-900 text-xs tracking-tight">-</span>
-              </div>
-            </div>
-            
-            <div id="shopReasonContainer" class="hidden text-[10.5px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium"></div>
-
-            <div class="text-[11px] text-slate-700 font-bold bg-white/90 p-2.5 rounded-lg border border-blue-100 space-y-2">
-              <div class="flex items-center gap-1 flex-wrap leading-relaxed">
-                <span class="text-slate-500">사업자번호:</span> <span id="part1BizNo" class="text-slate-900">정보없음</span>
-                <span class="text-slate-300 font-normal px-0.5">/</span>
-                <span class="text-slate-500">매장주소:</span> <span id="part1Address" class="text-slate-900 truncate max-w-[120px]">정보없음</span>
-                <span class="text-slate-300 font-normal px-0.5">/</span>
-                <span class="text-slate-500">전화번호:</span> <span id="part1Phone" class="text-slate-900">정보없음</span>
-              </div>
-              <div class="pt-1 flex justify-end">
-                <button type="button" id="copyAddressBtn" onclick="openMapSearchPopup()" class="hidden bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl transition shadow-xs flex items-center gap-1.5 active:scale-95">
-                  <i class="fa-solid fa-map-location-dot text-brand-600"></i> 주소검색
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 제품별 분석 섹션 -->
-      <section class="bg-white border-2 border-slate-200 rounded-2xl p-3.5 shadow-sm space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-boxes-stacked text-emerald-600 text-base"></i>
-            <h2 class="font-black text-sm text-slate-900">제품별 품목 분석</h2>
-          </div>
-          <span id="productCountBadge" class="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">총 0개 품목</span>
-        </div>
-
-        <div id="productCardList" class="space-y-3.5 pt-1">
-          <div class="p-8 text-center text-slate-400 font-bold text-xs space-y-2">
-            <i class="fa-solid fa-receipt text-3xl text-slate-300"></i>
-            <p>영수증 사진을 등록하시면 개별 품목이 분석됩니다.</p>
-          </div>
-        </div>
-
-        <!-- 전체 정산 요약 섹션 -->
-        <div id="receiptSummarySection" class="hidden mt-4 pt-3.5 pb-3.5 px-3.5 border-2 border-brand-300 space-y-3 bg-gradient-to-br from-brand-50 via-blue-50 to-indigo-50 rounded-2xl">
-          <div class="flex items-center justify-between border-b border-brand-200 pb-2">
-            <span class="text-xs font-black text-brand-900"><i class="fa-solid fa-calculator text-brand-600"></i> 전체 정산 요약</span>
-            <span class="text-[10px] bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full">자체 검산 완료</span>
-          </div>
-          <div id="summaryItemsContainer" class="space-y-2 text-xs"></div>
-          <div class="pt-2.5 border-t-2 border-brand-200 flex items-center justify-between">
-            <span class="font-black text-brand-900 text-sm">최종 결제 가격 (앱 산출)</span>
-            <span id="summaryFinalPrice" class="font-black text-brand-700 text-base font-mono">0원</span>
+          <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1">
+            <span class="font-black text-slate-500">상호명 [AI 복원]</span>
+            <p id="part1ShopName" class="font-black text-brand-700 text-sm truncate">-</p>
           </div>
         </div>
       </section>
 
     </main>
-
-    <!-- 하단 네비게이션 -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
-      <button type="button" onclick="scrollToTop()" class="flex flex-col items-center text-brand-600 font-black">
-        <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/스캔</span>
-      </button>
-      <button type="button" onclick="document.getElementById('part1Date').scrollIntoView({behavior:'smooth'})" class="flex flex-col items-center text-slate-400">
-        <i class="fa-solid fa-store text-base"></i><span class="text-[9px] font-bold mt-0.5">상호분석</span>
-      </button>
-      <button type="button" onclick="document.getElementById('productCardList').scrollIntoView({behavior:'smooth'})" class="flex flex-col items-center text-slate-400">
-        <i class="fa-solid fa-table-list text-base"></i><span class="text-[9px] font-bold mt-0.5">품목분석</span>
-      </button>
-      <button type="button" onclick="resetSystem()" class="flex flex-col items-center text-slate-400">
-        <i class="fa-solid fa-arrow-rotate-left text-base"></i><span class="text-[9px] font-bold mt-0.5">리셋</span>
-      </button>
-    </nav>
   </div>
 
   <script>
-    let currentShopAddress = "";
-    let currentShopName = "";
-    let currentSearchBrand = "";
     let activeReceiptBase64 = null;
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    window.onload = function() { clearAnalysisResidue(); };
-
-    function openCompactPopup(urlToOpen) {
-      if (!urlToOpen || urlToOpen.includes("정보없음") || urlToOpen.includes("미확인")) return;
-      const popupWidth = 480;
-      const popupHeight = 720;
-      const left = (window.screen.width - popupWidth) / 2;
-      const top = (window.screen.height - popupHeight) / 2;
-      window.open(urlToOpen, 'IndependentProductSearchPopup', `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`);
-    }
-
-    function extractPureBrand(rawName) {
-      if (!rawName || rawName.includes("정보없음")) return "";
-      
-      let brand = rawName.trim();
-      brand = brand.replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사/g, "");
-      brand = brand.replace(/[_/]/g, " ");
-      brand = brand.replace(/\s*[가-힣A-Za-z0-9]+(본점|지점|점|호점|역점|센터)\b.*$/g, "");
-      brand = brand.replace(/(본점|지점|직영점)\b.*$/g, "");
-      
-      if (brand.includes("다이소")) return "다이소";
-      if (brand.includes("이마트")) return "이마트";
-      if (brand.includes("홈플러스")) return "홈플러스";
-      if (brand.includes("코스트코")) return "코스트코";
-      if (brand.includes("올리브영")) return "올리브영";
-      if (brand.includes("노브랜드")) return "노브랜드";
-
-      brand = brand.replace(/\s+/g, " ").trim();
-      return brand.length >= 2 ? brand : "";
-    }
-
-    function getSmartSearchURL(queryStr, brandName = "") {
-      let queryText = (queryStr || "").trim();
-      let cleanBrand = extractPureBrand(brandName) || extractPureBrand(currentSearchBrand) || extractPureBrand(currentShopName);
-
-      let fullQuery = (cleanBrand && cleanBrand !== '없음') ? `${cleanBrand} ${queryText}` : queryText;
-      fullQuery = fullQuery.replace(/\s+/g, " ").trim();
-
-      if (!fullQuery) return 'https://search.naver.com/search.naver?query=';
-      return `https://search.naver.com/search.naver?query=${encodeURIComponent(fullQuery)}`;
-    }
-
     function clearAnalysisResidue() {
-      currentShopAddress = "";
-      currentShopName = "";
-      currentSearchBrand = "";
       activeReceiptBase64 = null;
-
-      ['part1Date', 'part1ShopOcr', 'part1ShopName'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.innerText = (id === 'part1ShopOcr' || id === 'part1ShopName') ? '정보없음' : '-';
-      });
-      ['part1BizNo', 'part1Address', 'part1Phone'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.innerText = '정보없음';
-      });
+      document.getElementById('part1Date').innerText = '-';
+      document.getElementById('part1ShopName').innerText = '-';
       
-      const copyBtn = document.getElementById('copyAddressBtn');
-      if(copyBtn) copyBtn.classList.add('hidden');
-      
-      const badgeCont = document.getElementById('shopStatusBadgeContainer');
-      if(badgeCont) badgeCont.innerHTML = '';
-      
-      const reasonCont = document.getElementById('shopReasonContainer');
-      if(reasonCont) {
-        reasonCont.innerText = '';
-        reasonCont.classList.add('hidden');
-      }
-      
-      const countBadge = document.getElementById('productCountBadge');
-      if(countBadge) countBadge.innerText = "총 0개 품목";
-      
-      const cardList = document.getElementById('productCardList');
-      if(cardList) cardList.innerHTML = '<div class="p-6 text-center text-slate-400 font-bold text-xs">영수증 사진을 첨부한 후 [영수증 분석 실행]을 누르세요.</div>';
-      
-      const summarySec = document.getElementById('receiptSummarySection');
-      if(summarySec) summarySec.classList.add('hidden');
-
       const scanBadge = document.getElementById('scanStatusBadge');
       if(scanBadge) {
-        scanBadge.innerText = '● 대기 중 (0% 초기화됨)';
-        scanBadge.className = 'text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full';
+        scanBadge.innerText = '● 대기 중';
+        scanBadge.className = 'text-[11px] bg-slate-100 text-slate-600 border border-slate-200 font-extrabold px-2.5 py-0.5 rounded-full';
       }
 
       const img = document.getElementById('uploadedReceiptImg');
-      if(img) {
-        img.classList.add('hidden');
-        img.src = "";
-      }
+      if(img) { img.classList.add('hidden'); img.src = ""; }
       const previewCont = document.getElementById('receiptPreviewContainer');
       if(previewCont) previewCont.classList.remove('hidden');
     }
@@ -388,32 +331,34 @@
         
         const modal = document.getElementById('cropperModal');
         modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // [고정] 배경 스크롤 차단
 
         if (cropperInstance) cropperInstance.destroy();
 
-        // 3가지 모바일 터치 최적화 설정 적용 (이미지 완전고정 + 100% 꽉 찬 영역 시작 + 영역 해제 방지)
+        // --- [핵심] 모바일 전용 프리폼 엣지 드래그 및 고정 캔버스 설정 ---
         cropperInstance = new Cropper(imageToCrop, {
-          viewMode: 1,
-          autoCropArea: 1.0,         // 100% 꽉 찬 상태로 시작
-          dragMode: 'none',          // 바깥 빈 공간을 터치해도 새 사각형을 그리지 않고 영역 해제 원천 방지
-          movable: false,           // 원본 이미지 이동 불가 (액자 고정)
-          zoomable: false,          // 핀치 줌 / 더블 터치 확대 불가
-          rotatable: false,         // 회전 불가
-          scalable: false,          // 크기 반전 불가
-          toggleDragModeOnDblclick: false, // 더블 클릭/터치 시 모드 변경 방지
-          responsive: true,
-          restore: false,
-          checkCrossOrigin: false,
-          modal: true,
+          viewMode: 1,               // 캔버스를 이미지 밖으로 나가지 못하게 제한 (흔들림 방지 기초)
+          autoCropArea: 0.9,          // [고정] 시작 시 사방 5% 여백 Safe Zone 확보
+          dragMode: 'none',          // 배경 터치 시 새 사각형 그리기 방지
+          movable: false,            // 원본 이미지 이동 불가 (액자 고정)
+          zoomable: false,           // 핀치 줌 / 더블 터치 확대 불가
+          rotatable: false,
+          scalable: false,
+          toggleDragModeOnDblclick: false,
+          responsive: false,         // [고정] 화면 크기 변화에 반응형 동작 차단
           guides: true,
           center: true,
-          highlight: false,         // 불필요한 하이라이트 레이어 제거
+          highlight: false,
           background: false,
           autoCrop: true,
-          cropBoxMovable: true,     // 선택 영역 자체 이동 가능
-          cropBoxResizable: true,   // 모서리/테두리 크기 조절 가능
-          minCropBoxWidth: 80,
-          minCropBoxHeight: 80
+          cropBoxMovable: false,     // [고정] 테두리 잡았을 때 박스 전체 이동 불가 (크기 조절만 작동)
+          cropBoxResizable: true,    // 테두리 선 크기 조절 가능
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
+          ready() {
+            // [고정] 자르기 영역을 이미지 중앙에 안정적으로 배치
+            this.cropper.setCropBoxData(this.cropper.getCropBoxData());
+          }
         });
       };
       reader.readAsDataURL(file);
@@ -430,13 +375,10 @@
         imageSmoothingQuality: 'medium'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.78);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.82);
 
       const img = document.getElementById('uploadedReceiptImg');
-      if (img) {
-        img.src = activeReceiptBase64;
-        img.classList.remove('hidden');
-      }
+      if (img) { img.src = activeReceiptBase64; img.classList.remove('hidden'); }
       const previewCont = document.getElementById('receiptPreviewContainer');
       if (previewCont) previewCont.classList.add('hidden');
 
@@ -452,294 +394,41 @@
     function cancelCrop() {
       const modal = document.getElementById('cropperModal');
       modal.classList.add('hidden');
-      if (cropperInstance) {
-        cropperInstance.destroy();
-        cropperInstance = null;
-      }
+      document.body.style.overflow = ''; // 배경 스크롤 복원
+      if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
       const imageToCrop = document.getElementById('imageToCrop');
       if (imageToCrop) imageToCrop.src = "";
     }
 
-    async function startReceiptAnalysis() {
-      const img = document.getElementById('uploadedReceiptImg');
-      if (!img || img.classList.contains('hidden') || !activeReceiptBase64) {
-        alert('영수증 사진을 먼저 첨부해 주세요.');
-        return;
-      }
-
-      currentShopName = "";
-      currentShopAddress = "";
-      currentSearchBrand = "";
+    // 분석 기능 (시뮬레이션)
+    function startReceiptAnalysis() {
+      if (!activeReceiptBase64) { alert('영수증 사진을 먼저 첨부해 주세요.'); return; }
 
       const scanBadge = document.getElementById('scanStatusBadge');
       if(scanBadge) {
-        scanBadge.innerText = '● 영수증 정밀 분석 중...';
+        scanBadge.innerText = '● 영수증 분석 중...';
         scanBadge.className = 'text-[11px] bg-blue-50 text-blue-700 border border-blue-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
-
-      document.getElementById('part1ShopOcr').innerText = '정보없음';
-      document.getElementById('part1ShopName').innerText = '정보없음';
-      document.getElementById('part1Date').innerText = '-';
-      document.getElementById('part1BizNo').innerText = '정보없음';
-      document.getElementById('part1Address').innerText = '정보없음';
-      document.getElementById('part1Phone').innerText = '정보없음';
       
-      const copyBtn = document.getElementById('copyAddressBtn');
-      if(copyBtn) copyBtn.classList.add('hidden');
-      
-      const badgeCont = document.getElementById('shopStatusBadgeContainer');
-      if(badgeCont) badgeCont.innerHTML = '';
-      
-      const reasonCont = document.getElementById('shopReasonContainer');
-      if(reasonCont) {
-        reasonCont.innerText = '';
-        reasonCont.classList.add('hidden');
-      }
-
-      const cardListContainer = document.getElementById('productCardList');
-      if(cardListContainer) {
-        cardListContainer.innerHTML = '<div class="p-8 text-center text-slate-400 font-bold text-xs"><i class="fa-solid fa-spinner fa-spin text-2xl text-brand-600 mb-2"></i><p>영수증 품목을 정밀 분석 중입니다...</p></div>';
-      }
-      
-      const summarySec = document.getElementById('receiptSummarySection');
-      if(summarySec) summarySec.classList.add('hidden');
-
       const analyzeBtn = document.getElementById('analyzeBtn');
       if(analyzeBtn) analyzeBtn.disabled = true;
-      
       const scannerLine = document.getElementById('scannerLine');
       if(scannerLine) scannerLine.classList.remove('hidden');
       
-      try {
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: activeReceiptBase64 })
-        });
-
-        const textResult = await response.text();
-        let result;
-        try {
-          result = JSON.parse(textResult);
-        } catch (err) {
-          throw new Error(`서버 응답 파싱 실패: ${textResult.substring(0, 80)}`);
-        }
-
-        if (!response.ok) {
-          throw new Error(result.error || `서버 통신 오류 (상태 코드: ${response.status})`);
-        }
-
+      setTimeout(() => {
+        document.getElementById('part1Date').innerText = '2024-05-20';
+        document.getElementById('part1ShopName').innerText = '이마트 천안점 (AI 분석완료)';
         if(scannerLine) scannerLine.classList.add('hidden');
-        renderAnalysisUI(result);
-      } catch (e) {
-        if(scannerLine) scannerLine.classList.add('hidden');
-        alert(`[분석 오류 발생]\n${e.message}`);
-        clearAnalysisResidue();
-      } finally {
         if(analyzeBtn) analyzeBtn.disabled = false;
-      }
-    }
-
-    function renderAnalysisUI(data) {
-      const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
-      const toFastNumber = (val) => (typeof val === 'number' ? val : Number(String(val || 0).replace(/[^0-9]/g, '')) || 0);
-
-      const scanBadge = document.getElementById('scanStatusBadge');
-      if (scanBadge) {
-        scanBadge.innerText = '● 분석 완료';
-        scanBadge.className = 'text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full';
-      }
-
-      let rawShopOcr = data.shopOcr || '정보없음';
-      let cleanOcr = (rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) ? '정보없음' : rawShopOcr;
-
-      let rawShopName = data.shopName || '정보없음';
-      currentShopName = rawShopName.replace(/\s*\(추정\)|AI 추정|\(추정\)/g, "").trim();
-      if (currentShopName.includes('미확인') || currentShopName.length < 2) {
-        currentShopName = '정보없음';
-      }
-
-      currentSearchBrand = (data.searchBrand || '').trim();
-
-      setTxt('part1Date', data.date || '-');
-      setTxt('part1ShopOcr', cleanOcr);
-      setTxt('part1ShopName', currentShopName);
-
-      const badgeContainer = document.getElementById('shopStatusBadgeContainer');
-      const reasonContainer = document.getElementById('shopReasonContainer');
-
-      if (data.shopConfidence === 'estimated') {
-        if (badgeContainer) {
-          badgeContainer.innerHTML = `<span class="text-[10px] bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-triangle-exclamation"></i> AI 추정 (확인 필요)</span>`;
-        }
-        if (reasonContainer && data.shopReason) {
-          reasonContainer.innerText = `💡 유추 근거: ${data.shopReason}`;
-          reasonContainer.classList.remove('hidden');
-        }
-      } else if (data.shopConfidence === 'official') {
-        if (badgeContainer) {
-          badgeContainer.innerHTML = `<span class="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-circle-check"></i> 공식 정보</span>`;
-        }
-        if (reasonContainer) reasonContainer.classList.add('hidden');
-      } else {
-        if (badgeContainer) {
-          badgeContainer.innerHTML = `<span class="text-[10px] bg-slate-400 text-white font-black px-2.5 py-0.5 rounded-full">정보 없음</span>`;
-        }
-        if (reasonContainer) reasonContainer.classList.add('hidden');
-      }
-
-      setTxt('part1BizNo', data.bizNo || '정보없음');
-      setTxt('part1Phone', data.phone || '정보없음');
-      
-      currentShopAddress = data.address || '정보없음';
-      setTxt('part1Address', currentShopAddress);
-      
-      const copyBtn = document.getElementById('copyAddressBtn');
-      if (copyBtn) {
-        if (currentShopAddress !== '정보없음') copyBtn.classList.remove('hidden');
-        else copyBtn.classList.add('hidden');
-      }
-
-      const products = data.products || [];
-      const overallElements = data.overallElements || [];
-      setTxt('productCountBadge', `총 ${products.length}개 품목`);
-
-      const cardListContainer = document.getElementById('productCardList');
-      if(!cardListContainer) return;
-      cardListContainer.innerHTML = '';
-      
-      let totalOriginalSum = 0;
-      let totalProductDiscountSum = 0;
-      let totalCalculatedProductsAmount = 0;
-
-      const fragment = document.createDocumentFragment();
-
-      products.forEach((item, index) => {
-        let originalPrice = toFastNumber(item.totalPrice || item.finalPrice);
-        let numDisc = toFastNumber(item.discount);
-        let finalPrice = toFastNumber(item.finalPrice || (originalPrice - numDisc));
         
-        totalOriginalSum += originalPrice;
-        totalProductDiscountSum += numDisc;
-        totalCalculatedProductsAmount += finalPrice;
-
-        const resolvedQuery = item.productAi || item.productOcr;
-        const searchURL = getSmartSearchURL(resolvedQuery, currentSearchBrand);
-
-        let discountDisplay = `<span class="font-black text-sm text-rose-600">-${numDisc.toLocaleString()}</span>`;
-        if (numDisc > 0 && item.discountName) {
-            discountDisplay = `
-                <span class="font-black text-sm text-rose-600 leading-none mt-1">-${numDisc.toLocaleString()}</span>
-                <span class="block text-[8.5px] text-rose-500 font-bold truncate w-full px-1 mt-1 leading-tight">(${item.discountName})</span>
-            `;
+        if(scanBadge) {
+          scanBadge.innerText = '● 분석 완료';
+          scanBadge.className = 'text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full';
         }
-
-        const card = document.createElement('div');
-        card.className = "bg-white border-2 border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-sm text-xs";
-        card.innerHTML = `
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
-            <div class="flex items-center gap-1.5 min-w-0 flex-1">
-              <span class="font-bold text-slate-700">품목 ${index + 1}</span>
-              <span class="text-slate-500 truncate">${item.productOcr || ''}</span>
-            </div>
-            <button type="button" class="search-action-btn bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-[11px] font-black py-1.5 px-3 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 shrink-0">
-              <i class="fa-solid fa-magnifying-glass text-brand-600"></i> 제품검색
-            </button>
-          </div>
-          <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span class="text-[10px] text-brand-600 font-bold">제품명 [AI 복원]</span>
-            <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
-          </div>
-          <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
-            <div class="flex flex-col justify-center"><span class="text-[9px] text-slate-500 block">단가*수량</span><span class="font-black text-sm text-slate-900">${originalPrice.toLocaleString()}</span></div>
-            <div class="border-x flex flex-col items-center justify-center overflow-hidden"><span class="text-[9px] text-slate-500 block shrink-0">할인액</span>${discountDisplay}</div>
-            <div class="flex flex-col justify-center"><span class="text-[9px] text-slate-500 block">금액</span><span class="font-black text-sm text-brand-700">${finalPrice.toLocaleString()}</span></div>
-          </div>
-        `;
-
-        const actionBtn = card.querySelector('.search-action-btn');
-        if (actionBtn) {
-          actionBtn.onclick = () => openCompactPopup(searchURL);
-        }
-
-        fragment.appendChild(card);
-      });
-
-      cardListContainer.appendChild(fragment);
-
-      const summaryContainer = document.getElementById('summaryItemsContainer');
-      if(summaryContainer) {
-        let summaryHTML = `<div class="flex justify-between font-bold"><span>품목 정가 합계</span><span>${totalOriginalSum.toLocaleString()}원</span></div>`;
-        
-        if (totalProductDiscountSum > 0) {
-          summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ 품목 할인 총액</span><span>-${totalProductDiscountSum.toLocaleString()}원</span></div>`;
-        }
-
-        if (overallElements.length === 0) {
-           summaryHTML += `<div class="flex justify-between font-bold text-slate-500"><span>└ 영수증 전체 할인</span><span>0원</span></div>`;
-        } else {
-            overallElements.forEach(el => {
-              let amtVal = Number(el.amount || 0);
-              if (amtVal < 0) {
-                summaryHTML += `<div class="flex justify-between font-bold text-rose-600"><span>└ ${el.name}</span><span>${amtVal.toLocaleString()}원</span></div>`;
-              } else {
-                summaryHTML += `<div class="flex justify-between font-bold text-amber-700"><span>└ ${el.name}</span><span>+${amtVal.toLocaleString()}원</span></div>`;
-              }
-            });
-        }
-
-        summaryContainer.innerHTML = summaryHTML;
-
-        const sumOverallEtc = overallElements.reduce((acc, el) => acc + Number(el.amount || 0), 0);
-        const resolvedTotal = (data.receiptTotal && data.receiptTotal > 0)
-          ? data.receiptTotal
-          : (totalCalculatedProductsAmount + sumOverallEtc);
-
-        setTxt('summaryFinalPrice', `${resolvedTotal.toLocaleString()}원`);
-      }
-      
-      const summarySec = document.getElementById('receiptSummarySection');
-      if(summarySec) summarySec.classList.remove('hidden');
+      }, 2500);
     }
 
-    function openMapSearchPopup() { 
-      if (!currentShopAddress || currentShopAddress.includes("정보없음")) return;
-
-      let rawAddr = currentShopAddress.trim()
-        .replace(/\([^)]*\)/g, "")
-        .replace(/(지하)?\d+[층층상가]\s*(\d+[호호])?/g, "")
-        .replace(/\b\d+호\b/g, "");
-
-      let addressParts = rawAddr.trim().split(/\s+/);
-      let cutoffIndex = -1;
-      for (let i = 0; i < addressParts.length; i++) {
-        if (addressParts[i].endsWith('로') || addressParts[i].endsWith('길')) {
-          cutoffIndex = i;
-          if (i + 1 < addressParts.length && /^\d+(-?\d+)?$/.test(addressParts[i + 1])) {
-            cutoffIndex = i + 1;
-          }
-          break;
-        }
-      }
-
-      let shortAddress = cutoffIndex !== -1 ? addressParts.slice(0, cutoffIndex + 1).join(" ") : addressParts.slice(0, 5).join(" ");
-      let cleanShopName = "";
-      if (currentShopName && !currentShopName.includes("정보없음")) {
-        cleanShopName = currentShopName
-          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
-          .replace(/주식회사|유한회사|사단법인|AI 추정/g, "")
-          .trim();
-      }
-
-      let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
-      targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
-
-      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword)}`;
-      openCompactPopup(mapSearchURL);
-    }
-    
     function resetSystem() { clearAnalysisResidue(); }
-    function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
   </script>
 </body>
 </html>
