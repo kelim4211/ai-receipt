@@ -39,23 +39,15 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* --- [정비] 조절점 없이 두꺼운 테두리만 직접 만지는 엣지 드래그 스타일 --- */
-    
-    /* 1. 작은 점(조절점) 완전 숨김 */
-    .cropper-point {
-      display: none !important;
-    }
+    /* --- [정비] 모바일 프리폼 엣지 드래그 스타일 --- */
+    .cropper-point { display: none !important; }
 
-    /* 2. 테두리 선 시각 스타일: 굵고 선명한 2.5px 파란 테두리 */
     .cropper-view-box {
       outline: 2.5px solid #2563eb !important;
       outline-color: #2563eb !important;
     }
 
-    /* 3. 테두리 선 전체를 40px 두께의 터치 핸들(Hit-Box)로 확장 */
-    .cropper-line {
-      background-color: transparent !important;
-    }
+    .cropper-line { background-color: transparent !important; }
     .cropper-line::after {
       content: '';
       position: absolute;
@@ -63,40 +55,35 @@
       touch-action: none;
     }
 
-    /* 상단 테두리 핸들 (가로 전체 터치) */
     .cropper-line.line-n { top: 0 !important; height: 2px !important; background-color: #2563eb !important; }
     .cropper-line.line-n::after { top: -20px; left: 0; right: 0; height: 40px; }
 
-    /* 하단 테두리 핸들 (가로 전체 터치) */
     .cropper-line.line-s { bottom: 0 !important; height: 2px !important; background-color: #2563eb !important; }
     .cropper-line.line-s::after { bottom: -20px; left: 0; right: 0; height: 40px; }
 
-    /* 좌측 테두리 핸들 (세로 전체 터치) */
     .cropper-line.line-w { left: 0 !important; width: 2px !important; background-color: #2563eb !important; }
     .cropper-line.line-w::after { left: -20px; top: 0; bottom: 0; width: 40px; }
 
-    /* 우측 테두리 핸들 (세로 전체 터치) */
     .cropper-line.line-e { right: 0 !important; width: 2px !important; background-color: #2563eb !important; }
     .cropper-line.line-e::after { right: -20px; top: 0; bottom: 0; width: 40px; }
 
     .cropper-modal { background-color: rgba(15, 23, 42, 0.75) !important; }
 
-    /* Cropper 컨테이너 넘침 및 스크롤 완전 차단 */
+    /* 컨테이너 내부 스크롤 완전 차단 */
     .cropper-container {
       width: 100% !important;
       height: 100% !important;
       touch-action: none !important;
-      user-select: none !important;
     }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 수동 이미지 자르기 모달 (100dvh 고정, 스크롤 완전 방지) -->
-  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-3 pb-6 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
+  <!-- 수동 이미지 자르기 모달 (절대 좌표 및 safe-area 고정) -->
+  <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-3 select-none overflow-hidden" style="height: 100%; max-height: 100dvh; touch-action: none;">
     
-    <!-- 상단 헤더 (고정 높이) -->
-    <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2.5 px-1 shrink-0 h-11">
+    <!-- 상단 헤더 (고정 44px) -->
+    <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
         <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
       </span>
@@ -105,15 +92,16 @@
       </button>
     </div>
     
-    <!-- [핵심] 높이가 고정된 안전 뷰포트 컨테이너 (스크롤 원천 차단) -->
-    <div class="relative flex-1 min-h-0 my-2 bg-black rounded-xl overflow-hidden p-2.5 box-border flex items-center justify-center" style="touch-action: none;">
+    <!-- [원인 해결 핵심] 상하단 툴바를 감안한 절대 가용 높이 설정 (calc(100dvh - 180px)) -->
+    <div class="relative w-full my-2 bg-black rounded-xl overflow-hidden p-2 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 180px); max-height: calc(100dvh - 180px); touch-action: none;">
       <div id="cropperWrapper" class="w-full h-full relative overflow-hidden flex items-center justify-center">
-        <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full" style="display: none;">
+        <!-- display: none 제거, Cropper가 정확한 비율을 읽을 수 있도록 설정 -->
+        <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full object-contain">
       </div>
     </div>
 
     <!-- 하단 푸터 컨트롤 (고정 높이) -->
-    <div class="space-y-2 px-1 shrink-0">
+    <div class="space-y-2 px-1 shrink-0 pb-2">
       <p class="text-[11px] text-slate-300 text-center font-medium leading-tight">
         조절점 없이 <strong class="text-brand-400">파란 테두리 선 전체</strong>를 손가락으로 잡고 밀어서 조절하세요.
       </p>
@@ -407,7 +395,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [정비] 사진 첨부 및 Cropper 초기화
+    // [정밀 보정] 사진 첨부 및 Cropper 초기화
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -428,14 +416,14 @@
           cropperInstance = null;
         }
 
-        // 모달 렌더링 후 DOM 높이가 확정된 시점에 Cropper 마운트
-        requestAnimationFrame(() => {
+        // 이미지 로딩 완료 후 정확한 크기로 Cropper 생성
+        imageToCrop.onload = function() {
           cropperInstance = new Cropper(imageToCrop, {
-            viewMode: 1,               // 캔버스가 표시 화면 영역을 절대 벗어나지 않도록 강제 제한
-            autoCropArea: 0.96,        // 상하좌우 안전 여백 안쪽에 4개 테두리 100% 노출
+            viewMode: 1,               // 캔버스가 절대 지정된 뷰포트를 벗어나지 않게 고정
+            autoCropArea: 0.90,        // 90% 안전 비율로 시작하여 상하좌우 4개 테두리가 화면 중앙에 무조건 다 보이게 보장
             dragMode: 'none',          // 배경 터치 시 박스 사라짐 방지
             movable: false,            // 캔버스 자체 이동 차단 (고정)
-            zoomable: false,           // 확대 축소 차단
+            zoomable: false,           // 핀치 줌 차단
             rotatable: false,
             scalable: false,
             responsive: false,         // 화면 크기 변동에 따른 재계산 차단
@@ -451,7 +439,7 @@
             minCropBoxWidth: 50,
             minCropBoxHeight: 50,
             ready() {
-              // 화면 표시 범위(Canvas) 전체에 맞춰 상하좌우 4개 테두리가 화면 안에 100% 온전히 들어오도록 보정
+              // 최초 렌더링 시 상하좌우 테두리가 화면 안에 온전히 나타나도록 자동 정렬
               const canvasData = this.cropper.getCanvasData();
               this.cropper.setCropBoxData({
                 left: canvasData.left,
@@ -461,13 +449,12 @@
               });
             }
           });
-        });
+        };
       };
       reader.readAsDataURL(file);
       event.target.value = "";
     }
 
-    // [정비] 자르기 완료 처리
     function confirmCrop() {
       if (!cropperInstance) return;
 
@@ -497,7 +484,6 @@
       cancelCrop();
     }
 
-    // [정비] 자르기 모달 닫기 및 인스턴스 해제
     function cancelCrop() {
       const modal = document.getElementById('cropperModal');
       modal.classList.add('hidden');
@@ -506,7 +492,10 @@
         cropperInstance = null;
       }
       const imageToCrop = document.getElementById('imageToCrop');
-      if (imageToCrop) imageToCrop.src = "";
+      if (imageToCrop) {
+        imageToCrop.onload = null;
+        imageToCrop.src = "";
+      }
     }
 
     async function startReceiptAnalysis() {
