@@ -42,7 +42,7 @@
     /* 다른 기본 조절점 숨김 */
     .cropper-point { display: none !important; }
 
-    /* [핵심] 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 (높이 최소화, 글씨 가림 방지) */
+    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 (높이 최소화, 글씨 가림 방지) */
     .cropper-point.point-s {
       display: block !important;
       bottom: -4px !important;
@@ -118,7 +118,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 수동 이미지 자르기 모달 (0.97 최적 여백 및 타원형 바 조절점 노출) -->
+  <!-- 수동 이미지 자르기 모달 -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-2 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
     <!-- 상단 머리글 -->
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
@@ -137,7 +137,7 @@
       </div>
     </div>
 
-    <!-- 하단 푸터 (안내 문구 완전 삭제, 버튼만 배치) -->
+    <!-- 하단 푸터 (버튼만 배치) -->
     <div class="px-1 shrink-0 pb-1">
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-800 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
@@ -150,7 +150,7 @@
 
   <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative pb-20 border-x border-slate-200">
     
-    <!-- 상단 머리글 -->
+    <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
         <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shrink-0">
@@ -158,7 +158,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-[10px] font-black text-brand-300 tracking-tight leading-none mb-1">가계동향조사를 위한</p>
-          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 인공지능 가계지출 분석기</h1>
+          <h1 class="font-black text-sm sm:text-base tracking-tight text-white truncate leading-none">지능형 AI 가계지출 분석앱</h1>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
@@ -168,37 +168,37 @@
       </div>
     </header>
 
-    <!-- 본문 내용 -->
+    <!-- 메인 스크롤 영역 -->
     <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-white">
       
-      <!-- 영수증 인식 구역 -->
+      <!-- 스캐너 섹션 (첨부 코드의 border-2 border-slate-200 디자인 사용) -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
-            <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 인식 상태
+            <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 스캔 상태
           </span>
           <span id="scanStatusBadge" class="text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full">
             ● 대기 중 (0% 초기화됨)
           </span>
         </div>
 
-        <!-- 미리보기 사각형 -->
-        <div class="relative w-full h-56 bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-hidden p-1 select-none">
+        <!-- [핵심] 첨부 코드 그대로 적용된 점선 테두리 디자인: border-2 border-dashed border-slate-300 -->
+        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2" style="touch-action: auto;">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
-          <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-slate-50">
+          <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
             <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center shadow-sm mb-1.5">
               <i class="fa-solid fa-receipt text-2xl text-brand-500"></i>
             </div>
             <p class="text-xs font-bold text-slate-600">카메라 촬영 또는 사진을 첨부하세요</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">선택 영역을 확정하면 여기에 분석용 이미지가 표시됩니다</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs cursor-zoom-in" style="touch-action: auto; user-select: auto;">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
-        <input type="file" id="galleryInput" class="hidden" accept="image/png, image/jpeg, image/jpg" onchange="handleImageSelected(event, '사진 보관함')">
+        <input type="file" id="galleryInput" class="hidden" accept="image/png, image/jpeg, image/jpg" onchange="handleImageSelected(event, '갤러리')">
 
         <div class="space-y-2.5 pt-1">
           <div class="grid grid-cols-2 gap-2.5">
@@ -219,7 +219,7 @@
         </div>
       </section>
 
-      <!-- 상호 분석 구역 -->
+      <!-- 상호 분석 섹션 -->
       <section class="bg-white border-2 border-brand-200 rounded-2xl p-4 shadow-sm space-y-3">
         <div class="flex items-center justify-between border-b border-brand-100 pb-2">
           <div class="flex items-center gap-2">
@@ -230,13 +230,13 @@
 
         <div class="space-y-2 text-xs">
           <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
-            <span class="font-black text-slate-600">날짜 [문자 인식]</span>
+            <span class="font-black text-slate-600">날짜 [OCR]</span>
             <span id="part1Date" class="font-black text-brand-700 text-sm">-</span>
           </div>
 
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center gap-2">
-              <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [문자 인식]</span>
+              <span class="font-black text-slate-600 text-xs"><i class="fa-solid fa-font text-slate-400"></i> 상호명 [OCR]</span>
               <span id="part1ShopOcr" class="font-bold text-slate-500 text-xs truncate">정보없음</span>
             </div>
           </div>
@@ -244,7 +244,7 @@
           <div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200 space-y-2.5">
             <div class="flex items-center justify-between border-b border-blue-200/80 pb-2 flex-wrap gap-1">
               <span class="font-black text-brand-900 text-xs flex items-center gap-1.5">
-                <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [인공지능 복원]
+                <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> 상호명 [AI 복원]
               </span>
               <div class="flex items-center gap-2">
                 <span id="shopStatusBadgeContainer"></span>
@@ -272,7 +272,7 @@
         </div>
       </section>
 
-      <!-- 제품별 분석 구역 -->
+      <!-- 제품별 분석 섹션 -->
       <section class="bg-white border-2 border-slate-200 rounded-2xl p-3.5 shadow-sm space-y-3">
         <div class="flex items-center justify-between border-b border-slate-200 pb-2">
           <div class="flex items-center gap-2">
@@ -289,7 +289,7 @@
           </div>
         </div>
 
-        <!-- 전체 정산 요약 구역 -->
+        <!-- 전체 정산 요약 섹션 -->
         <div id="receiptSummarySection" class="hidden mt-4 pt-3.5 pb-3.5 px-3.5 border-2 border-brand-300 space-y-3 bg-gradient-to-br from-brand-50 via-blue-50 to-indigo-50 rounded-2xl">
           <div class="flex items-center justify-between border-b border-brand-200 pb-2">
             <span class="text-xs font-black text-brand-900"><i class="fa-solid fa-calculator text-brand-600"></i> 전체 정산 요약</span>
@@ -297,7 +297,7 @@
           </div>
           <div id="summaryItemsContainer" class="space-y-2 text-xs"></div>
           <div class="pt-2.5 border-t-2 border-brand-200 flex items-center justify-between">
-            <span class="font-black text-brand-900 text-sm">최종 결제 가격 (산출 결과)</span>
+            <span class="font-black text-brand-900 text-sm">최종 결제 가격 (앱 산출)</span>
             <span id="summaryFinalPrice" class="font-black text-brand-700 text-base font-mono">0원</span>
           </div>
         </div>
@@ -305,10 +305,10 @@
 
     </main>
 
-    <!-- 하단 바로가기 메뉴 -->
+    <!-- 하단 네비게이션 -->
     <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
       <button type="button" onclick="scrollToTop()" class="flex flex-col items-center text-brand-600 font-black">
-        <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/인식</span>
+        <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/스캔</span>
       </button>
       <button type="button" onclick="document.getElementById('part1Date').scrollIntoView({behavior:'smooth'})" class="flex flex-col items-center text-slate-400">
         <i class="fa-solid fa-store text-base"></i><span class="text-[9px] font-bold mt-0.5">상호분석</span>
@@ -317,7 +317,7 @@
         <i class="fa-solid fa-table-list text-base"></i><span class="text-[9px] font-bold mt-0.5">품목분석</span>
       </button>
       <button type="button" onclick="resetSystem()" class="flex flex-col items-center text-slate-400">
-        <i class="fa-solid fa-arrow-rotate-left text-base"></i><span class="text-[9px] font-bold mt-0.5">초기화</span>
+        <i class="fa-solid fa-arrow-rotate-left text-base"></i><span class="text-[9px] font-bold mt-0.5">리셋</span>
       </button>
     </nav>
   </div>
@@ -439,7 +439,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [핵심] viewMode 1로 확대 영역 내부 제한 + 0.97 비율로 상하 여백 최적화
+    // viewMode 0 적용: 두 손가락 확대 시 영역 밖 확장 허용 + 테두리 1:1 동시 확대
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -462,12 +462,12 @@
 
         imageToCrop.onload = function() {
           cropperInstance = new Cropper(imageToCrop, {
-            viewMode: 1,               // 확대 및 이동을 첨부 영역 내부로 엄격 제한
+            viewMode: 0,
             autoCropArea: 0.98,
-            dragMode: 'none',          // 바깥 터치로 박스가 풀리는 현상 방지
-            movable: true,             // 두 손가락으로 사진 이동 허용
-            zoomable: true,            // 두 손가락으로 핀치 줌 확대 허용
-            zoomOnTouch: true,         // 모바일 터치 제스처 줌 활성화
+            dragMode: 'none',
+            movable: true,
+            zoomable: true,
+            zoomOnTouch: true,
             zoomOnWheel: false,
             rotatable: false,
             scalable: false,
@@ -479,15 +479,14 @@
             highlight: false,
             background: false,
             autoCrop: true,
-            cropBoxMovable: false,     // 테두리 드래그 시 박스 통째로 밀림 방지
-            cropBoxResizable: true,    // 하단 조절점 및 테두리 리사이징 활성화
+            cropBoxMovable: false,
+            cropBoxResizable: true,
             minCropBoxWidth: 50,
             minCropBoxHeight: 50,
             ready() {
               const self = this.cropper;
               setTimeout(() => {
                 const canvasData = self.getCanvasData();
-                // [핵심] 0.97 비율 적용: 영수증 면적을 97%로 극대화하면서 타원 조절점 잘림 완벽 방지
                 const targetHeight = canvasData.height * 0.97;
                 const verticalMargin = (canvasData.height - targetHeight) / 2;
 
@@ -499,7 +498,6 @@
                 };
                 self.setCropBoxData(initialBox);
 
-                // 이미지 대비 테두리의 상대 비율 저장 (자석 결합)
                 syncBoxRatio = {
                   leftRatio: (initialBox.left - canvasData.left) / canvasData.width,
                   topRatio: (initialBox.top - canvasData.top) / canvasData.height,
@@ -508,7 +506,6 @@
                 };
               }, 60);
             },
-            // 조절점 또는 테두리를 미세 조정했을 때 최신 비율 저장
             cropend() {
               if (!this.cropper) return;
               const canvasData = this.cropper.getCanvasData();
@@ -522,7 +519,6 @@
                 };
               }
             },
-            // 확대 시 테두리도 실시간으로 이미지에 붙어 함께 확대
             zoom() {
               if (!this.cropper || !syncBoxRatio) return;
               const self = this.cropper;
@@ -679,7 +675,7 @@
       let cleanOcr = (rawShopOcr.includes('미확인') || rawShopOcr.includes('정보없음') || rawShopOcr.length < 2) ? '정보없음' : rawShopOcr;
 
       let rawShopName = data.shopName || '정보없음';
-      currentShopName = rawShopName.replace(/\s*\(추정\)|인공지능 추정|\(추정\)/g, "").trim();
+      currentShopName = rawShopName.replace(/\s*\(추정\)|AI 추정|\(추정\)/g, "").trim();
       if (currentShopName.includes('미확인') || currentShopName.length < 2) {
         currentShopName = '정보없음';
       }
@@ -695,7 +691,7 @@
 
       if (data.shopConfidence === 'estimated') {
         if (badgeContainer) {
-          badgeContainer.innerHTML = `<span class="text-[10px] bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-triangle-exclamation"></i> 인공지능 추정 (확인 필요)</span>`;
+          badgeContainer.innerHTML = `<span class="text-[10px] bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs"><i class="fa-solid fa-triangle-exclamation"></i> AI 추정 (확인 필요)</span>`;
         }
         if (reasonContainer && data.shopReason) {
           reasonContainer.innerText = `💡 유추 근거: ${data.shopReason}`;
@@ -772,7 +768,7 @@
             </button>
           </div>
           <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span class="text-[10px] text-brand-600 font-bold">제품명 [인공지능 복원]</span>
+            <span class="text-[10px] text-brand-600 font-bold">제품명 [AI 복원]</span>
             <p class="font-black text-slate-900 text-sm">${item.productAi || item.productOcr || ''}</p>
           </div>
           <div class="grid grid-cols-3 gap-1 text-center bg-white p-2 rounded-lg border border-slate-200">
@@ -852,7 +848,7 @@
       if (currentShopName && !currentShopName.includes("정보없음")) {
         cleanShopName = currentShopName
           .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
-          .replace(/주식회사|유한회사|사단법인|인공지능 추정/g, "")
+          .replace(/주식회사|유한회사|사단법인|AI 추정/g, "")
           .trim();
       }
 
