@@ -126,7 +126,7 @@
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-2 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영역 선택 (테두리 조절)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -173,18 +173,17 @@
     <!-- 메인 분석 내용 영역 (전체 핀치 줌 대상) -->
     <main class="flex-1 p-4 space-y-4 bg-white pb-24" style="touch-action: auto;">
       
-      <!-- 스캐너 섹션 (첨부 코드 테두리 디자인 유지) -->
+      <!-- 스캐너 섹션 -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
-            <i class="fa-solid fa-camera-retro text-brand-600"></i> 영수증 스캔 상태
+            <i class="fa-solid fa-camera-retro text-brand-600"></i> 스캔 상태
           </span>
           <span id="scanStatusBadge" class="text-[11px] bg-slate-100 text-slate-700 border border-slate-300 font-extrabold px-2.5 py-0.5 rounded-full">
             ● 대기 중 (0% 초기화됨)
           </span>
         </div>
 
-        <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지 -->
         <div class="relative w-full min-h-[190px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-2" style="touch-action: auto;">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
@@ -196,8 +195,8 @@
             <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <!-- 첨부된 영수증 이미지 (화면 전체 확대 시 함께 확대) -->
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs" style="touch-action: auto;">
+          <!-- 첨부된 이미지 (화면 전체 확대 시 함께 확대) -->
+          <img id="uploadedReceiptImg" src="" alt="첨부 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs" style="touch-action: auto;">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -288,7 +287,7 @@
         <div id="productCardList" class="space-y-3.5 pt-1">
           <div class="p-8 text-center text-slate-400 font-bold text-xs space-y-2">
             <i class="fa-solid fa-receipt text-3xl text-slate-300"></i>
-            <p>영수증 사진을 등록하시면 개별 품목이 분석됩니다.</p>
+            <p>사진을 등록하시면 개별 품목이 분석됩니다.</p>
           </div>
         </div>
 
@@ -333,13 +332,11 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // 줌 및 이동 시 테두리 비율 동기화를 위한 핵심 상태값
     let syncBoxRatio = null;
 
     window.onload = function() { 
       clearAnalysisResidue(); 
 
-      // 자르기 모달에서만 브라우저 줌 방지, 메인 화면에서는 핀치 줌 자유 허용
       const modal = document.getElementById('cropperModal');
       if (modal) {
         modal.addEventListener('touchmove', function(e) {
@@ -410,7 +407,7 @@
       if(countBadge) countBadge.innerText = "총 0개 품목";
       
       const cardList = document.getElementById('productCardList');
-      if(cardList) cardList.innerHTML = '<div class="p-6 text-center text-slate-400 font-bold text-xs">영수증 사진을 첨부한 후 [영수증 분석 실행]을 누르세요.</div>';
+      if(cardList) cardList.innerHTML = '<div class="p-6 text-center text-slate-400 font-bold text-xs">사진을 첨부한 후 [분석 실행]을 누르세요.</div>';
       
       const summarySec = document.getElementById('receiptSummarySection');
       if(summarySec) summarySec.classList.add('hidden');
@@ -443,7 +440,6 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // 자르기 팝업 화면: 확대/축소 시 테두리도 1:1로 함께 동기화
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -469,9 +465,9 @@
             viewMode: 0,
             autoCropArea: 0.98,
             dragMode: 'none',
-            movable: true,             // 두 손가락으로 사진 이동 허용
-            zoomable: true,            // 두 손가락으로 핀치 줌 확대/축소 허용
-            zoomOnTouch: true,         // 모바일 터치 제스처 줌 활성화
+            movable: true,
+            zoomable: true,
+            zoomOnTouch: true,
             zoomOnWheel: false,
             rotatable: false,
             scalable: false,
@@ -483,15 +479,14 @@
             highlight: false,
             background: false,
             autoCrop: true,
-            cropBoxMovable: false,     // 테두리 드래그 시 박스 통째로 밀림 방지
-            cropBoxResizable: true,    // 하단 조절점 및 테두리 리사이징 활성화
+            cropBoxMovable: false,
+            cropBoxResizable: true,
             minCropBoxWidth: 50,
             minCropBoxHeight: 50,
             ready() {
               const self = this.cropper;
               setTimeout(() => {
                 const canvasData = self.getCanvasData();
-                // 0.97 비율: 영수증 면적을 최대로 넓히면서 하단 타원 조절점이 1px도 잘리지 않도록 배치
                 const targetHeight = canvasData.height * 0.97;
                 const verticalMargin = (canvasData.height - targetHeight) / 2;
 
@@ -503,7 +498,6 @@
                 };
                 self.setCropBoxData(initialBox);
 
-                // 이미지와 테두리의 상대 비율 저장 (자석 결합)
                 syncBoxRatio = {
                   leftRatio: (initialBox.left - canvasData.left) / canvasData.width,
                   topRatio: (initialBox.top - canvasData.top) / canvasData.height,
@@ -593,7 +587,7 @@
     async function startReceiptAnalysis() {
       const img = document.getElementById('uploadedReceiptImg');
       if (!img || img.classList.contains('hidden') || !activeReceiptBase64) {
-        alert('영수증 사진을 먼저 첨부해 주세요.');
+        alert('사진을 먼저 첨부해 주세요.');
         return;
       }
 
@@ -603,7 +597,7 @@
 
       const scanBadge = document.getElementById('scanStatusBadge');
       if(scanBadge) {
-        scanBadge.innerText = '● 영수증 정밀 분석 중...';
+        scanBadge.innerText = '● 정밀 분석 중...';
         scanBadge.className = 'text-[11px] bg-blue-50 text-blue-700 border border-blue-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
 
@@ -625,7 +619,7 @@
 
       const cardListContainer = document.getElementById('productCardList');
       if(cardListContainer) {
-        cardListContainer.innerHTML = '<div class="p-8 text-center text-slate-400 font-bold text-xs"><i class="fa-solid fa-spinner fa-spin text-2xl text-brand-600 mb-2"></i><p>영수증 품목을 정밀 분석 중입니다...</p></div>';
+        cardListContainer.innerHTML = '<div class="p-8 text-center text-slate-400 font-bold text-xs"><i class="fa-solid fa-spinner fa-spin text-2xl text-brand-600 mb-2"></i><p>품목을 정밀 분석 중입니다...</p></div>';
       }
       
       const summarySec = document.getElementById('receiptSummarySection');
@@ -803,7 +797,7 @@
         }
 
         if (overallElements.length === 0) {
-           summaryHTML += `<div class="flex justify-between font-bold text-slate-500"><span>└ 영수증 전체 할인</span><span>0원</span></div>`;
+           summaryHTML += `<div class="flex justify-between font-bold text-slate-500"><span>└ 전체 할인</span><span>0원</span></div>`;
         } else {
             overallElements.forEach(el => {
               let amtVal = Number(el.amount || 0);
