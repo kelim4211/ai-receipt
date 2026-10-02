@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- 분석 후 두 손가락 확대를 위해 user-scalable=yes 및 maximum-scale=4.0 적용 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=4.0, user-scalable=yes, viewport-fit=cover">
   <title>지능형 인공지능 가계지출 분석기</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,9 +28,7 @@
     
     html, body {
       width: 100%;
-      height: 100%;
-      overflow: hidden;
-      overscroll-behavior: none;
+      min-height: 100%;
       background-color: #f8fafc;
     }
 
@@ -169,9 +168,9 @@
     </header>
 
     <!-- 메인 스크롤 영역 -->
-    <main class="flex-1 p-4 space-y-4 overflow-y-auto bg-white">
+    <main class="flex-1 p-4 space-y-4 bg-white">
       
-      <!-- 스캐너 섹션 (첨부 코드의 border-2 border-slate-200 디자인 사용) -->
+      <!-- 스캐너 섹션 (border-2 border-slate-200 유지)[cite: 11] -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
@@ -182,8 +181,8 @@
           </span>
         </div>
 
-        <!-- [핵심] 첨부 코드 그대로 적용된 점선 테두리 디자인: border-2 border-dashed border-slate-300 -->
-        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2" style="touch-action: auto;">
+        <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지[cite: 11] -->
+        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
@@ -194,7 +193,7 @@
             <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs cursor-zoom-in" style="touch-action: auto; user-select: auto;">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -306,7 +305,7 @@
     </main>
 
     <!-- 하단 네비게이션 -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
+    <nav class="sticky bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
       <button type="button" onclick="scrollToTop()" class="flex flex-col items-center text-brand-600 font-black">
         <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/스캔</span>
       </button>
@@ -829,38 +828,14 @@
       let rawAddr = currentShopAddress.trim()
         .replace(/\([^)]*\)/g, "")
         .replace(/(지하)?\d+[층층상가]\s*(\d+[호호])?/g, "")
-        .replace(/\b\d+호\b/g, "");
+        .replace(/\b모바일 또는 터치 지원 웹 환경에서 영수증 분석 결과 화면을 두 손가락 핀치 줌(Pinch-to-zoom)으로 확대·축소할 수 있도록 설정하는 방법입니다.
 
-      let addressParts = rawAddr.trim().split(/\s+/);
-      let cutoffIndex = -1;
-      for (let i = 0; i < addressParts.length; i++) {
-        if (addressParts[i].endsWith('로') || addressParts[i].endsWith('길')) {
-          cutoffIndex = i;
-          if (i + 1 < addressParts.length && /^\d+(-?\d+)?$/.test(addressParts[i + 1])) {
-            cutoffIndex = i + 1;
-          }
-          break;
-        }
-      }
+---
 
-      let shortAddress = cutoffIndex !== -1 ? addressParts.slice(0, cutoffIndex + 1).join(" ") : addressParts.slice(0, 5).join(" ");
-      let cleanShopName = "";
-      if (currentShopName && !currentShopName.includes("정보없음")) {
-        cleanShopName = currentShopName
-          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
-          .replace(/주식회사|유한회사|사단법인|AI 추정/g, "")
-          .trim();
-      }
+### 1. HTML 메타 태그 (기본 브라우저 줌 허용)
 
-      let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
-      targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
+HTML의 `viewport` 설정에서 브라우저의 기본 줌 기능이 차단되어 있는지 확인하고 활성화합니다.
 
-      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword)}`;
-      openCompactPopup(mapSearchURL);
-    }
-    
-    function resetSystem() { clearAnalysisResidue(); }
-    function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  </script>
-</body>
-</html>
+```html
+<!-- user-scalable=yes로 설정하고 maximum-scale 제한을 풉니다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
