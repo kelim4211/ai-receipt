@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <!-- 모바일 브라우저 화면 전체 핀치 줌(확대/축소) 완전 허용 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>지능형 인공지능 가계지출 분석기</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,13 +24,21 @@
   </script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    * { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; }
+    * { 
+      font-family: 'Pretendard', sans-serif; 
+      -webkit-tap-highlight-color: transparent; 
+    }
     
+    /* 모바일 브라우저 자체 화면 줌/스크롤 제스처 완전 개방 */
     html, body {
       width: 100%;
       min-height: 100%;
       background-color: #f8fafc;
-      touch-action: manipulation;
+      touch-action: auto !important;
+      -webkit-user-select: auto;
+      user-select: auto;
+      overflow-x: auto;
+      overflow-y: auto;
     }
 
     .moving-light { animation: scan-motion 2s ease-in-out infinite; }
@@ -41,7 +50,7 @@
     /* 자르기 화면 전용 조절점 스타일 */
     .cropper-point { display: none !important; }
 
-    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 */
+    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 (높이 최소화, 글씨 가림 방지) */
     .cropper-point.point-s {
       display: block !important;
       bottom: -4px !important;
@@ -113,7 +122,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 수동 이미지 자르기 모달 -->
+  <!-- 수동 이미지 자르기 모달 (모달 내부에서는 독립 조작) -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-2 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
@@ -140,7 +149,7 @@
     </div>
   </div>
 
-  <!-- 메인 프레임 -->
+  <!-- 메인 프레임: 화면 확대 시 자유로운 스크롤 보장 -->
   <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative border-x border-slate-200">
     
     <!-- 상단 헤더 -->
@@ -161,10 +170,10 @@
       </div>
     </header>
 
-    <!-- 메인 분석 내용 영역 -->
-    <main class="flex-1 p-4 space-y-4 bg-white pb-24">
+    <!-- 메인 분석 내용 영역 (전체 핀치 줌 대상) -->
+    <main class="flex-1 p-4 space-y-4 bg-white pb-24" style="touch-action: auto;">
       
-      <!-- 스캐너 섹션 (첨부 코드 테두리 디자인 유지)[cite: 11] -->
+      <!-- 스캐너 섹션 (첨부 코드 테두리 디자인 유지) -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
@@ -175,8 +184,8 @@
           </span>
         </div>
 
-        <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지[cite: 11] -->
-        <div class="relative w-full min-h-[190px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-2">
+        <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지 -->
+        <div class="relative w-full min-h-[190px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-2" style="touch-action: auto;">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
@@ -187,7 +196,8 @@
             <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs">
+          <!-- 첨부된 영수증 이미지 (화면 전체 확대 시 함께 확대) -->
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs" style="touch-action: auto;">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -329,6 +339,7 @@
     window.onload = function() { 
       clearAnalysisResidue(); 
 
+      // 자르기 모달에서만 브라우저 줌 방지, 메인 화면에서는 핀치 줌 자유 허용
       const modal = document.getElementById('cropperModal');
       if (modal) {
         modal.addEventListener('touchmove', function(e) {
@@ -432,7 +443,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [핵심] 확대/축소 시 테두리도 1:1로 함께 확대/축소 동기화되는 엔진
+    // 자르기 팝업 화면: 확대/축소 시 테두리도 1:1로 함께 동기화
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -501,7 +512,6 @@
                 };
               }, 60);
             },
-            // 사용자가 조절점을 당겨서 영역을 바꿨을 때 최신 비율 업데이트
             cropend() {
               if (!this.cropper) return;
               const canvasData = this.cropper.getCanvasData();
@@ -515,7 +525,6 @@
                 };
               }
             },
-            // [핵심] 확대 및 축소 시 테두리도 1:1로 동일 비율로 동시 확대/축소
             zoom() {
               if (!this.cropper || !syncBoxRatio) return;
               const self = this.cropper;
