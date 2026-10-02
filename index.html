@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <!-- 모바일 브라우저 화면 전체 핀치 줌 허용 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <!-- 분석 후 두 손가락 확대를 위해 user-scalable=yes 및 maximum-scale=4.0 적용 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=4.0, user-scalable=yes, viewport-fit=cover">
   <title>지능형 인공지능 가계지출 분석기</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -26,12 +26,10 @@
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     * { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; }
     
-    /* 화면 전체 확대가 막히지 않도록 기본 오버플로우 제한 완전 해제 */
     html, body {
       width: 100%;
       min-height: 100%;
       background-color: #f8fafc;
-      touch-action: manipulation;
     }
 
     .moving-light { animation: scan-motion 2s ease-in-out infinite; }
@@ -40,10 +38,10 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* 자르기 화면 전용 조절점 스타일 */
+    /* 다른 기본 조절점 숨김 */
     .cropper-point { display: none !important; }
 
-    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 */
+    /* 하단 중앙 조절점: 얇고 좌우로 긴 타원형 바 형태 (높이 최소화, 글씨 가림 방지) */
     .cropper-point.point-s {
       display: block !important;
       bottom: -4px !important;
@@ -60,6 +58,7 @@
       z-index: 30 !important;
     }
 
+    /* 얇은 조절점 위아래로 손가락 터치 인식 영역(36px) 광폭화 */
     .cropper-point.point-s::after {
       content: '';
       position: absolute;
@@ -84,6 +83,7 @@
       touch-action: none;
     }
 
+    /* 상단 테두리: 4px */
     .cropper-line.line-n { 
       top: 0 !important; 
       height: 4px !important; 
@@ -91,6 +91,7 @@
     }
     .cropper-line.line-n::after { top: -20px; left: 0; right: 0; height: 44px; }
 
+    /* 하단 테두리: 4px */
     .cropper-line.line-s { 
       bottom: 0 !important; 
       height: 4px !important; 
@@ -98,6 +99,7 @@
     }
     .cropper-line.line-s::after { bottom: -20px; left: 0; right: 0; height: 44px; }
 
+    /* 좌우 테두리 핸들: 2.5px */
     .cropper-line.line-w { left: 0 !important; width: 2.5px !important; background-color: #2563eb !important; }
     .cropper-line.line-w::after { left: -20px; top: 0; bottom: 0; width: 40px; }
 
@@ -117,6 +119,7 @@
 
   <!-- 수동 이미지 자르기 모달 -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-2 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
+    <!-- 상단 머리글 -->
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
         <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
@@ -126,12 +129,14 @@
       </button>
     </div>
     
+    <!-- 영수증 표시 공간 극대화 및 하단 타원 조절점 안전 여백 구역 -->
     <div class="relative w-full my-1 bg-black rounded-xl overflow-hidden p-2 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 110px); max-height: calc(100dvh - 110px); touch-action: none;">
       <div id="cropperWrapper" class="w-full h-full relative overflow-hidden flex items-center justify-center">
         <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full object-contain">
       </div>
     </div>
 
+    <!-- 하단 푸터 (버튼만 배치) -->
     <div class="px-1 shrink-0 pb-1">
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-800 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
@@ -142,8 +147,7 @@
     </div>
   </div>
 
-  <!-- 메인 프레임: 확대 시 잘림 방지를 위해 min-h-screen 및 relative 적용 -->
-  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative border-x border-slate-200">
+  <div class="w-full max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl relative pb-20 border-x border-slate-200">
     
     <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-md">
@@ -163,10 +167,10 @@
       </div>
     </header>
 
-    <!-- 메인 분석 내용 영역 -->
-    <main class="flex-1 p-4 space-y-4 bg-white pb-24">
+    <!-- 메인 스크롤 영역 -->
+    <main class="flex-1 p-4 space-y-4 bg-white">
       
-      <!-- 스캐너 섹션 (첨부 코드 테두리 디자인 유지)[cite: 11] -->
+      <!-- 스캐너 섹션 (border-2 border-slate-200 유지)[cite: 11] -->
       <section class="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-sm relative overflow-hidden space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black text-slate-700 flex items-center gap-1.5">
@@ -178,7 +182,7 @@
         </div>
 
         <!-- 점선 테두리 디자인: border-2 border-dashed border-slate-300 유지[cite: 11] -->
-        <div class="relative w-full min-h-[190px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-2">
+        <div class="relative w-full h-48 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center overflow-auto p-2">
           <div id="scannerLine" class="hidden absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-brand-600 to-transparent shadow-[0_0_10px_#2563eb] z-20 moving-light pointer-events-none"></div>
           
           <div id="receiptPreviewContainer" class="w-full h-full flex flex-col items-center justify-center p-2 text-center">
@@ -189,8 +193,7 @@
             <p class="text-[10px] text-slate-400 mt-0.5">배경을 잘라내면 판독 정확도와 토큰 절약이 극대화됩니다</p>
           </div>
 
-          <!-- 첨부된 영수증 이미지 -->
-          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto object-contain z-10 bg-white rounded-lg shadow-xs">
+          <img id="uploadedReceiptImg" src="" alt="첨부 영수증 미리보기" class="hidden w-full h-auto min-h-full object-contain z-10 bg-white rounded-lg shadow-xs">
         </div>
 
         <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleImageSelected(event, '카메라 촬영')">
@@ -302,7 +305,7 @@
     </main>
 
     <!-- 하단 네비게이션 -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
+    <nav class="sticky bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-between items-center z-40 shadow-lg">
       <button type="button" onclick="scrollToTop()" class="flex flex-col items-center text-brand-600 font-black">
         <i class="fa-solid fa-camera text-base"></i><span class="text-[9px] mt-0.5">촬영/스캔</span>
       </button>
@@ -325,6 +328,8 @@
     let activeReceiptBase64 = null;
     let cropperInstance = null;
     let currentSelectedSource = "";
+
+    // 줌 동기화를 위한 상대 좌표 비율 보관 변수
     let syncBoxRatio = null;
 
     window.onload = function() { 
@@ -433,7 +438,7 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // viewMode 0: 자르기 화면에서 사진 자유 줌 및 테두리 1:1 동기화
+    // viewMode 0 적용: 두 손가락 확대 시 영역 밖 확장 허용 + 테두리 1:1 동시 확대
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -537,13 +542,13 @@
       if (!cropperInstance) return;
 
       const croppedCanvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1400,
-        maxHeight: 1400,
+        maxWidth: 1200,
+        maxHeight: 1200,
         imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
+        imageSmoothingQuality: 'medium'
       });
 
-      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.85);
+      activeReceiptBase64 = croppedCanvas.toDataURL('image/jpeg', 0.80);
 
       const img = document.getElementById('uploadedReceiptImg');
       if (img) {
@@ -661,7 +666,7 @@
 
       const scanBadge = document.getElementById('scanStatusBadge');
       if (scanBadge) {
-        scanBadge.innerText = '● 분석 완료 (두 손가락으로 화면 전체 확대 가능)';
+        scanBadge.innerText = '● 분석 완료';
         scanBadge.className = 'text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full';
       }
 
@@ -823,38 +828,14 @@
       let rawAddr = currentShopAddress.trim()
         .replace(/\([^)]*\)/g, "")
         .replace(/(지하)?\d+[층층상가]\s*(\d+[호호])?/g, "")
-        .replace(/\b\d+호\b/g, "");
+        .replace(/\b모바일 또는 터치 지원 웹 환경에서 영수증 분석 결과 화면을 두 손가락 핀치 줌(Pinch-to-zoom)으로 확대·축소할 수 있도록 설정하는 방법입니다.
 
-      let addressParts = rawAddr.trim().split(/\s+/);
-      let cutoffIndex = -1;
-      for (let i = 0; i < addressParts.length; i++) {
-        if (addressParts[i].endsWith('로') || addressParts[i].endsWith('길')) {
-          cutoffIndex = i;
-          if (i + 1 < addressParts.length && /^\d+(-?\d+)?$/.test(addressParts[i + 1])) {
-            cutoffIndex = i + 1;
-          }
-          break;
-        }
-      }
+---
 
-      let shortAddress = cutoffIndex !== -1 ? addressParts.slice(0, cutoffIndex + 1).join(" ") : addressParts.slice(0, 5).join(" ");
-      let cleanShopName = "";
-      if (currentShopName && !currentShopName.includes("정보없음")) {
-        cleanShopName = currentShopName
-          .replace(/\(주\)|\(유\)|\(합명\)|\(합자\)|\(사\)/g, "")
-          .replace(/주식회사|유한회사|사단법인|AI 추정/g, "")
-          .trim();
-      }
+### 1. HTML 메타 태그 (기본 브라우저 줌 허용)
 
-      let targetKeyword = cleanShopName ? `${cleanShopName} ${shortAddress}` : shortAddress;
-      targetKeyword = targetKeyword.replace(/\s+/g, " ").trim();
+HTML의 `viewport` 설정에서 브라우저의 기본 줌 기능이 차단되어 있는지 확인하고 활성화합니다.
 
-      let mapSearchURL = `https://search.naver.com/search.naver?query=${encodeURIComponent(targetKeyword)}`;
-      openCompactPopup(mapSearchURL);
-    }
-    
-    function resetSystem() { clearAnalysisResidue(); }
-    function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  </script>
-</body>
-</html>
+```html
+<!-- user-scalable=yes로 설정하고 maximum-scale 제한을 풉니다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
