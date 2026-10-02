@@ -39,38 +39,41 @@
       50% { top: 90%; opacity: 0.9; }
     }
 
-    /* --- [1-A 적용] 하단 중앙 조절점 전용 스타일 --- */
+    /* --- Cropper 커스텀 스타일 --- */
+    /* 기본 모서리 및 기타 조절점 숨김 */
     .cropper-point { display: none !important; }
 
-    /* 하단 중앙 조절점(point-s)만 선명한 파란 원형으로 노출 */
+    /* [1-A 적용] 하단 중앙 조절점(point-s)만 큼직하고 선명한 원형 손잡이로 표시 */
     .cropper-point.point-s {
       display: block !important;
-      bottom: -9px !important;
+      bottom: -11px !important;
       left: 50% !important;
-      margin-left: -9px !important;
-      width: 18px !important;
-      height: 18px !important;
+      margin-left: -11px !important;
+      width: 22px !important;
+      height: 22px !important;
       background-color: #2563eb !important;
-      border: 2.5px solid #ffffff !important;
+      border: 3px solid #ffffff !important;
       border-radius: 9999px !important;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45) !important;
       opacity: 1 !important;
       touch-action: none !important;
-      z-index: 30 !important;
+      z-index: 40 !important;
+      cursor: ns-resize !important;
     }
 
-    /* 하단 조절점 터치 면적 44px 광폭화 */
+    /* 하단 조절점 터치 면적 48px 광폭 확장 */
     .cropper-point.point-s::after {
       content: '';
       position: absolute;
       top: -13px;
       left: -13px;
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       background: transparent;
       touch-action: none;
     }
 
+    /* 테두리 프레임 스타일: 2.5px 선명한 파란색 */
     .cropper-view-box {
       outline: 2.5px solid #2563eb !important;
       outline-color: #2563eb !important;
@@ -100,10 +103,11 @@
     }
     .cropper-line.line-s::after { bottom: -20px; left: 0; right: 0; height: 44px; }
 
-    /* 좌우 테두리 핸들 (2.5px) */
+    /* 좌측 테두리 핸들 (2.5px) */
     .cropper-line.line-w { left: 0 !important; width: 2.5px !important; background-color: #2563eb !important; }
     .cropper-line.line-w::after { left: -20px; top: 0; bottom: 0; width: 40px; }
 
+    /* 우측 테두리 핸들 (2.5px) */
     .cropper-line.line-e { right: 0 !important; width: 2.5px !important; background-color: #2563eb !important; }
     .cropper-line.line-e::after { right: -20px; top: 0; bottom: 0; width: 40px; }
 
@@ -118,19 +122,19 @@
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
 
-  <!-- 수동 이미지 자르기 모달 (방식 1: 줌 동기화) -->
+  <!-- 수동 이미지 자르기 모달 (자유 핀치 줌 & 팬 지원) -->
   <div id="cropperModal" class="fixed inset-0 z-50 bg-slate-950/95 hidden flex flex-col justify-between p-3 select-none overflow-hidden" style="height: 100dvh; max-height: 100dvh; touch-action: none;">
     <!-- 상단 헤더 -->
     <div class="flex items-center justify-between text-white border-b border-slate-800 pb-2 px-1 shrink-0 h-11">
       <span class="text-sm font-black flex items-center gap-2">
-        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (테두리 조절)
+        <i class="fa-solid fa-crop-simple text-amber-400"></i> 영수증 영역 선택 (확대/자유이동)
       </span>
       <button type="button" onclick="cancelCrop()" class="text-slate-400 hover:text-white p-1">
         <i class="fa-solid fa-xmark text-lg"></i>
       </button>
     </div>
     
-    <!-- 고정 가용 뷰포트 영역 -->
+    <!-- 고정 가용 뷰포트 영역: 줌인 시 영수증과 테두리를 자유롭게 팬/이동 가능 -->
     <div class="relative w-full my-2 bg-black rounded-xl overflow-hidden p-2.5 box-border flex items-center justify-center shrink-0" style="height: calc(100dvh - 190px); max-height: calc(100dvh - 190px); touch-action: none;">
       <div id="cropperWrapper" class="w-full h-full relative overflow-hidden flex items-center justify-center">
         <img id="imageToCrop" src="" alt="자르기 원본" class="block max-h-full max-w-full object-contain">
@@ -140,7 +144,7 @@
     <!-- 하단 푸터 컨트롤 -->
     <div class="space-y-2 px-1 shrink-0 pb-1">
       <p class="text-[11px] text-slate-300 text-center font-medium leading-tight">
-        두 손가락으로 벌려 확대하면 <strong class="text-amber-400">테두리도 함께 확대</strong>되며, <strong class="text-brand-400">하단 파란 점</strong>으로 미세 조절하세요.
+        두 손가락으로 확대 후 <strong class="text-amber-400">자유롭게 밀어 이동</strong>할 수 있으며, <strong class="text-brand-400">하단 파란 점</strong>으로 잘라낼 끝선을 맞추세요.
       </p>
       <div class="grid grid-cols-2 gap-2">
         <button type="button" onclick="cancelCrop()" class="w-full bg-slate-800 active:scale-95 text-white font-black text-sm py-3 rounded-xl">취소</button>
@@ -333,8 +337,9 @@
     let cropperInstance = null;
     let currentSelectedSource = "";
 
-    // [방식 1] 줌 동기화를 위한 상대 좌표 비율 보관 변수
+    // 줌/팬 동기화를 위한 자르기 박스의 상대 좌표 비율
     let syncBoxRatio = null;
+    let isInternalSyncing = false;
 
     window.onload = function() { 
       clearAnalysisResidue(); 
@@ -442,7 +447,6 @@
       if(gal) { gal.value = ""; gal.click(); }
     }
 
-    // [핵심] 방식 1: 확대 시 사진과 테두리가 1:1로 함께 확대/이동되는 줌 엔진
     function handleImageSelected(event, source) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -465,11 +469,11 @@
 
         imageToCrop.onload = function() {
           cropperInstance = new Cropper(imageToCrop, {
-            viewMode: 0,               // [방식 1 핵심] 캔버스가 확대될 때 테두리가 사진 바깥/전체로 함께 커질 수 있도록 락 해제
+            viewMode: 0,               // 화면을 벗어나는 자유로운 줌 및 팬 이동 허용
             autoCropArea: 1.0,
-            dragMode: 'none',          // 바깥 터치로 박스가 사라지는 현상 방지
-            movable: true,             // 두 손가락으로 사진 이동 허용
-            zoomable: true,            // 두 손가락으로 핀치 줌 확대 허용
+            dragMode: 'move',          // 두 손가락 줌/팬 및 배경 드래그 시 사진 자유 이동 활성화
+            movable: true,             // 영수증 이미지 자체 이동 100% 허용
+            zoomable: true,            // 두 손가락 핀치 줌 확대 100% 허용
             zoomOnTouch: true,         // 모바일 터치 제스처 줌 활성화
             zoomOnWheel: false,
             rotatable: false,
@@ -501,7 +505,7 @@
                 };
                 self.setCropBoxData(initialBox);
 
-                // 현재 이미지 대비 테두리의 상대 비율 저장 (자석 결합)
+                // 이미지 대비 테두리의 상대 비율 저장 (자석 결합)
                 syncBoxRatio = {
                   leftRatio: (initialBox.left - canvasData.left) / canvasData.width,
                   topRatio: (initialBox.top - canvasData.top) / canvasData.height,
@@ -510,9 +514,9 @@
                 };
               }, 60);
             },
-            // 사용자가 테두리(하단 점 등)를 직접 만져서 크기를 바꿨을 때 최신 비율 업데이트
+            // 사용자가 하단 점을 움직여 크기를 바꿨을 때 최신 비율 갱신
             cropend() {
-              if (!this.cropper) return;
+              if (!this.cropper || isInternalSyncing) return;
               const canvasData = this.cropper.getCanvasData();
               const boxData = this.cropper.getCropBoxData();
               if (canvasData.width > 0 && canvasData.height > 0) {
@@ -524,25 +528,41 @@
                 };
               }
             },
-            // [방식 1 핵심] 두 손가락으로 확대/축소할 때 테두리도 실시간으로 사진에 붙어서 함께 확대/축소
+            // 두 손가락으로 줌인할 때 테두리도 함께 같은 비율로 확대
             zoom() {
-              if (!this.cropper || !syncBoxRatio) return;
-              const self = this.cropper;
-              requestAnimationFrame(() => {
-                const canvasData = self.getCanvasData();
-                self.setCropBoxData({
-                  left: canvasData.left + (canvasData.width * syncBoxRatio.leftRatio),
-                  top: canvasData.top + (canvasData.height * syncBoxRatio.topRatio),
-                  width: canvasData.width * syncBoxRatio.widthRatio,
-                  height: canvasData.height * syncBoxRatio.heightRatio
-                });
-              });
+              syncCropBoxWithCanvas();
+            },
+            // 사진을 이리저리 이동(스크롤/팬)할 때 테두리도 실시간으로 추적
+            crop(e) {
+              if (e.detail && e.detail.action === 'move') {
+                syncCropBoxWithCanvas();
+              }
             }
           });
         };
       };
       reader.readAsDataURL(file);
       event.target.value = "";
+    }
+
+    // 캔버스 줌 & 이동 시 자르기 상자를 같은 좌표로 자동 보정하는 헬퍼 함수
+    function syncCropBoxWithCanvas() {
+      if (!cropperInstance || !syncBoxRatio || isInternalSyncing) return;
+      isInternalSyncing = true;
+      requestAnimationFrame(() => {
+        if (!cropperInstance) {
+          isInternalSyncing = false;
+          return;
+        }
+        const canvasData = cropperInstance.getCanvasData();
+        cropperInstance.setCropBoxData({
+          left: canvasData.left + (canvasData.width * syncBoxRatio.leftRatio),
+          top: canvasData.top + (canvasData.height * syncBoxRatio.topRatio),
+          width: canvasData.width * syncBoxRatio.widthRatio,
+          height: canvasData.height * syncBoxRatio.heightRatio
+        });
+        isInternalSyncing = false;
+      });
     }
 
     function confirmCrop() {
@@ -588,12 +608,17 @@
         imageToCrop.src = "";
       }
       syncBoxRatio = null;
+      isInternalSyncing = false;
     }
 
     async function startReceiptAnalysis() {
       const img = document.getElementById('uploadedReceiptImg');
       if (!img || img.classList.contains('hidden') || !activeReceiptBase64) {
-        alert('영수증 사진을 먼저 첨부해 주세요.');
+        const scanBadge = document.getElementById('scanStatusBadge');
+        if (scanBadge) {
+          scanBadge.innerText = '● 영수증을 먼저 첨부하세요';
+          scanBadge.className = 'text-[11px] bg-rose-50 text-rose-700 border border-rose-300 font-extrabold px-2.5 py-0.5 rounded-full';
+        }
         return;
       }
 
@@ -660,7 +685,10 @@
         renderAnalysisUI(result);
       } catch (e) {
         if(scannerLine) scannerLine.classList.add('hidden');
-        alert(`[분석 오류 발생]\n${e.message}`);
+        if (scanBadge) {
+          scanBadge.innerText = '● 분석 실패';
+          scanBadge.className = 'text-[11px] bg-rose-50 text-rose-700 border border-rose-300 font-extrabold px-2.5 py-0.5 rounded-full';
+        }
         clearAnalysisResidue();
       } finally {
         if(analyzeBtn) analyzeBtn.disabled = false;
